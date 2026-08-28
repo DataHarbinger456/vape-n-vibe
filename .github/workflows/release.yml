@@ -83,6 +83,12 @@ jobs:
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
         with:
+          # Handoff to the release job, nothing more: once it has attached these
+          # to the GitHub Release they are dead weight, and release assets are
+          # stored separately from artifacts. Left on the default 90-day
+          # retention these builds exhausted the account's artifact storage
+          # quota, which silently blocked artifact uploads across every repo.
+          retention-days: 1
           name: mac-arm64
           path: |
             release/*.dmg
@@ -124,6 +130,12 @@ jobs:
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
+          # Handoff to the release job, nothing more: once it has attached these
+          # to the GitHub Release they are dead weight, and release assets are
+          # stored separately from artifacts. Left on the default 90-day
+          # retention these builds exhausted the account's artifact storage
+          # quota, which silently blocked artifact uploads across every repo.
+          retention-days: 1
           name: win-x64
           path: |
             release/*.exe
