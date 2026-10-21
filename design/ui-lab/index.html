@@ -1,0 +1,1479 @@
+<!doctype html>
+<html lang="en" data-variant="plume">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Vaper UI lab: five directions</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=DM+Sans:opsz,wght@9..40,400..700&family=Geist+Mono:wght@400..600&family=Geist:wght@400..700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=Instrument+Sans:wght@400..700&family=Newsreader:opsz,wght@6..72,400..600&family=Slackey&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="lab.css" />
+    <link rel="stylesheet" href="v-plume.css" />
+    <link rel="stylesheet" href="v-console.css" />
+    <link rel="stylesheet" href="v-scope.css" />
+    <link rel="stylesheet" href="v-transcript.css" />
+    <link rel="stylesheet" href="v-mercury.css" />
+  </head>
+  <body>
+    <!-- Lucide icon paths (the project dependency), one family across all directions. -->
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <defs>
+        <symbol id="i-menu" viewBox="0 0 24 24">
+          <path d="M4 5h16M4 12h16M4 19h16" />
+        </symbol>
+        <symbol id="i-back" viewBox="0 0 24 24">
+          <path d="m15 18-6-6 6-6" />
+        </symbol>
+        <symbol id="i-download" viewBox="0 0 24 24">
+          <path d="M12 15V3" />
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <path d="m7 10 5 5 5-5" />
+        </symbol>
+        <symbol id="i-x" viewBox="0 0 24 24">
+          <path d="M18 6 6 18M6 6l12 12" />
+        </symbol>
+        <symbol id="i-check" viewBox="0 0 24 24">
+          <path d="M20 6 9 17l-5-5" />
+        </symbol>
+        <symbol id="i-plus" viewBox="0 0 24 24">
+          <path d="M5 12h14M12 5v14" />
+        </symbol>
+        <symbol id="i-refresh" viewBox="0 0 24 24">
+          <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+          <path d="M21 3v5h-5" />
+          <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+          <path d="M8 16H3v5" />
+        </symbol>
+        <symbol id="i-mic" viewBox="0 0 24 24">
+          <path d="M12 19v3" />
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+          <rect x="9" y="2" width="6" height="13" rx="3" />
+        </symbol>
+        <symbol id="i-globe" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="10" />
+          <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
+          <path d="M2 12h20" />
+        </symbol>
+        <symbol id="i-cpu" viewBox="0 0 24 24">
+          <path
+            d="M12 20v2M12 2v2M17 20v2M17 2v2M2 12h2M2 17h2M2 7h2M20 12h2M20 17h2M20 7h2M7 20v2M7 2v2"
+          />
+          <rect x="4" y="4" width="16" height="16" rx="2" />
+          <rect x="8" y="8" width="8" height="8" rx="1" />
+        </symbol>
+        <symbol id="i-book" viewBox="0 0 24 24">
+          <path
+            d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"
+          />
+          <path d="m8 13 4-7 4 7" />
+          <path d="M9.1 11h5.7" />
+        </symbol>
+        <symbol id="i-lines" viewBox="0 0 24 24">
+          <path d="M2 10v3M6 6v11M10 3v18M14 8v7M18 5v13M22 10v3" />
+        </symbol>
+      </defs>
+    </svg>
+
+    <header class="lab-bar">
+      <div class="lab-brand">
+        <span class="lab-wordmark">Vaper</span>
+        <span class="lab-sub">Interface lab</span>
+      </div>
+      <nav class="lab-tabs" role="tablist" aria-label="Design directions">
+        <button
+          class="lab-tab"
+          role="tab"
+          data-variant="plume"
+          aria-controls="stage"
+        >
+          <span class="lab-tab-num">01</span>Plume
+        </button>
+        <button
+          class="lab-tab"
+          role="tab"
+          data-variant="console"
+          aria-controls="stage"
+        >
+          <span class="lab-tab-num">02</span>Console
+        </button>
+        <button
+          class="lab-tab"
+          role="tab"
+          data-variant="scope"
+          aria-controls="stage"
+        >
+          <span class="lab-tab-num">03</span>Scope
+        </button>
+        <button
+          class="lab-tab"
+          role="tab"
+          data-variant="transcript"
+          aria-controls="stage"
+        >
+          <span class="lab-tab-num">04</span>Transcript
+        </button>
+        <button
+          class="lab-tab"
+          role="tab"
+          data-variant="mercury"
+          aria-controls="stage"
+        >
+          <span class="lab-tab-num">05</span>Mercury
+        </button>
+      </nav>
+      <div class="lab-controls">
+        <div class="seg" role="group" aria-label="Audio source">
+          <button type="button" data-lab="source" data-value="sim">
+            Simulated voice
+          </button>
+          <button type="button" data-lab="source" data-value="mic">
+            My microphone
+          </button>
+        </div>
+        <button
+          type="button"
+          class="switch"
+          role="switch"
+          data-lab="autoplay"
+          aria-checked="true"
+        >
+          <span class="switch-track" aria-hidden="true"></span>Autoplay
+        </button>
+      </div>
+    </header>
+
+    <main class="lab-stage" id="stage" role="tabpanel" aria-labelledby="v-name">
+      <section class="lab-intro" aria-describedby="v-thesis">
+        <p class="lab-index" id="v-index">01 / 05</p>
+        <h1 class="lab-name" id="v-name">Plume</h1>
+        <p class="lab-tagline" id="v-tagline"></p>
+        <p class="lab-thesis" id="v-thesis"></p>
+        <dl class="lab-notes" id="v-notes"></dl>
+
+        <div class="lab-drive">
+          <button
+            type="button"
+            class="hold"
+            id="hold"
+            aria-pressed="false"
+            aria-describedby="hold-hint"
+          >
+            <span class="hold-dot" aria-hidden="true"></span>
+            <span id="hold-label">Hold to talk</span>
+          </button>
+          <p class="lab-hint" id="hold-hint">
+            Or hold <kbd>Space</kbd>, standing in for <kbd>fn</kbd>. Keys
+            <kbd>1</kbd> to <kbd>5</kbd> switch direction.
+          </p>
+        </div>
+
+        <fieldset class="lab-inspect">
+          <legend>Inspect</legend>
+          <div class="seg" role="group" aria-label="Overlay state">
+            <button type="button" data-lab="freeze" data-value="live">
+              Live
+            </button>
+            <button type="button" data-lab="freeze" data-value="recording">
+              Recording
+            </button>
+            <button type="button" data-lab="freeze" data-value="processing">
+              Processing
+            </button>
+          </div>
+          <div class="seg" role="group" aria-label="Desktop wallpaper">
+            <button type="button" data-lab="wall" data-value="dark">
+              Dark desktop
+            </button>
+            <button type="button" data-lab="wall" data-value="light">
+              Light desktop
+            </button>
+          </div>
+          <button
+            type="button"
+            class="switch"
+            role="switch"
+            data-lab="reduced"
+            aria-checked="false"
+          >
+            <span class="switch-track" aria-hidden="true"></span>Reduced motion
+          </button>
+          <button
+            type="button"
+            class="switch"
+            role="switch"
+            data-lab="bounds"
+            aria-checked="false"
+          >
+            <span class="switch-track" aria-hidden="true"></span>Overlay window
+            bounds
+          </button>
+        </fieldset>
+        <p class="lab-fine">
+          Interactive prototype. Captions are scripted, audio is simulated
+          unless you switch to your microphone, and downloads, updates and
+          permission grants are simulated. Every visualizer reads the same
+          128-bin analyser data the app already sends over IPC.
+        </p>
+        <p class="sr-only" id="lab-live" aria-live="polite"></p>
+      </section>
+
+      <section class="lab-window-col" aria-label="Settings window">
+        <!-- ============================== 01 PLUME ============================== -->
+        <div
+          class="win v-plume"
+          data-window="plume"
+          style="--w: 400px; --h: 340px"
+          role="region"
+          aria-label="Plume settings window"
+        >
+          <div class="tl" aria-hidden="true"><i></i><i></i><i></i></div>
+          <header class="p-head">
+            <div class="p-brand" data-view-only="main">
+              <span class="p-logo">Vaper</span
+              ><span class="p-ver" data-role="version"></span>
+            </div>
+            <button
+              type="button"
+              class="p-back"
+              data-action="view"
+              data-target="main"
+              data-view-only="permissions"
+            >
+              <svg class="ic" aria-hidden="true"><use href="#i-back"></use></svg
+              >Settings
+            </button>
+            <div class="menu-wrap">
+              <button
+                type="button"
+                class="p-icon-btn"
+                data-action="menu"
+                aria-haspopup="menu"
+                aria-expanded="false"
+                aria-label="Menu"
+              >
+                <svg class="ic" aria-hidden="true">
+                  <use href="#i-menu"></use>
+                </svg>
+              </button>
+              <div class="p-menu" data-role="menu" role="menu" hidden>
+                <button
+                  type="button"
+                  role="menuitem"
+                  data-action="view"
+                  data-target="permissions"
+                >
+                  Permissions
+                </button>
+              </div>
+            </div>
+          </header>
+          <div class="p-main" data-view="main">
+            <section class="p-hero" aria-label="Push to talk">
+              <span class="p-key" data-role="hotkey">fn</span>
+              <div class="p-hero-copy">
+                <p class="p-hero-label" data-role="status" aria-live="polite">
+                  Hold to talk
+                </p>
+                <p class="p-hero-sub">
+                  <span data-role="model-name">Whisper</span> ·
+                  <span data-role="lang-name">Auto-detect</span>
+                </p>
+                <div class="p-hero-actions">
+                  <button
+                    type="button"
+                    class="p-link"
+                    data-action="change-hotkey"
+                  >
+                    Change shortcut
+                  </button>
+                  <button
+                    type="button"
+                    class="p-link"
+                    data-action="reset-fn"
+                    hidden
+                  >
+                    Use fn
+                  </button>
+                </div>
+              </div>
+              <canvas
+                class="p-hero-viz"
+                data-role="window-viz"
+                width="96"
+                height="44"
+                aria-hidden="true"
+              ></canvas>
+            </section>
+            <div class="p-rows">
+              <div class="p-row">
+                <label for="p-mic">Microphone</label>
+                <select id="p-mic" class="p-select" data-role="mic"></select>
+              </div>
+              <div class="p-row">
+                <label for="p-lang">Language</label>
+                <select id="p-lang" class="p-select" data-role="lang"></select>
+              </div>
+              <div class="p-row">
+                <span id="p-dict-l">Dictionary</span>
+                <div class="p-row-end">
+                  <span class="p-hint" data-role="dict-hint" hidden
+                    >Whisper only</span
+                  >
+                  <span class="p-count" data-role="dict-count"></span>
+                  <button
+                    type="button"
+                    class="p-btn"
+                    data-action="dict-open"
+                    aria-describedby="p-dict-l"
+                  >
+                    Edit
+                  </button>
+                </div>
+              </div>
+            </div>
+            <footer class="p-foot">
+              <div class="p-engine">
+                <label class="sr-only" for="p-model"
+                  >Transcription engine</label
+                >
+                <select
+                  id="p-model"
+                  class="p-select p-select-sm"
+                  data-role="model"
+                ></select>
+                <span class="p-status" data-role="model-status"></span>
+                <span class="bar p-bar" data-role="download-bar" hidden></span>
+                <button
+                  type="button"
+                  class="p-icon-btn sm"
+                  data-action="download"
+                  aria-label="Download model"
+                >
+                  <svg class="ic" aria-hidden="true">
+                    <use href="#i-download"></use>
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  class="p-btn is-primary"
+                  data-action="restart"
+                  hidden
+                >
+                  Restart to apply
+                </button>
+              </div>
+              <button type="button" class="p-btn" data-action="update">
+                Check for updates
+              </button>
+            </footer>
+          </div>
+          <div class="p-perms" data-view="permissions" hidden>
+            <h2 class="p-title">Permissions</h2>
+            <div class="p-row" data-perm="mic">
+              <div>
+                <p class="p-perm-name">Microphone</p>
+                <p class="p-perm-why">Hears you while you hold the shortcut</p>
+              </div>
+              <span class="p-granted" data-role="perm-status"
+                ><svg class="ic" aria-hidden="true">
+                  <use href="#i-check"></use></svg
+                >Granted</span
+              >
+              <button type="button" class="p-btn" data-action="grant">
+                Grant
+              </button>
+            </div>
+            <div class="p-row" data-perm="access">
+              <div>
+                <p class="p-perm-name">Accessibility</p>
+                <p class="p-perm-why">Reads the shortcut in any app</p>
+              </div>
+              <span class="p-granted" data-role="perm-status"
+                ><svg class="ic" aria-hidden="true">
+                  <use href="#i-check"></use></svg
+                >Granted</span
+              >
+              <button type="button" class="p-btn" data-action="grant">
+                Grant
+              </button>
+            </div>
+            <div class="p-row" data-perm="se">
+              <div>
+                <p class="p-perm-name">System Events</p>
+                <p class="p-perm-why">
+                  Pastes the transcript where you are typing
+                </p>
+              </div>
+              <span class="p-granted" data-role="perm-status"
+                ><svg class="ic" aria-hidden="true">
+                  <use href="#i-check"></use></svg
+                >Granted</span
+              >
+              <button type="button" class="p-btn" data-action="grant">
+                Grant
+              </button>
+            </div>
+          </div>
+          <div class="p-dict" data-role="dict" hidden>
+            <div
+              class="p-dict-panel"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="p-dict-title"
+            >
+              <div class="p-dict-head">
+                <h2 id="p-dict-title" class="p-title">Dictionary</h2>
+                <button type="button" class="p-btn" data-action="dict-close">
+                  Done
+                </button>
+              </div>
+              <div class="p-dict-add">
+                <label class="sr-only" for="p-dict-in">Add a word</label>
+                <input
+                  id="p-dict-in"
+                  data-role="dict-input"
+                  placeholder="Add a word"
+                  autocomplete="off"
+                  spellcheck="false"
+                  aria-describedby="p-dict-err"
+                />
+                <button type="button" class="p-btn" data-action="dict-add">
+                  Add
+                </button>
+              </div>
+              <p
+                class="dict-error"
+                id="p-dict-err"
+                data-role="dict-error"
+                aria-live="polite"
+              ></p>
+              <ul class="p-dict-list" data-role="dict-list"></ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================== 02 CONSOLE ============================== -->
+        <div
+          class="win v-console"
+          data-window="console"
+          style="--w: 400px; --h: 396px"
+          role="region"
+          aria-label="Console settings window"
+          hidden
+        >
+          <div class="tl" aria-hidden="true"><i></i><i></i><i></i></div>
+          <span class="c-screw c-screw-bl" aria-hidden="true"></span
+          ><span class="c-screw c-screw-br" aria-hidden="true"></span>
+          <header class="c-head">
+            <div class="c-brand" data-view-only="main">
+              <span class="c-logo">Vaper</span>
+              <span class="c-plate"
+                >Model <span data-role="version"></span
+              ></span>
+            </div>
+            <button
+              type="button"
+              class="c-back"
+              data-action="view"
+              data-target="main"
+              data-view-only="permissions"
+            >
+              <svg class="ic" aria-hidden="true"><use href="#i-back"></use></svg
+              >Main panel
+            </button>
+            <div class="menu-wrap">
+              <button
+                type="button"
+                class="c-icon-btn"
+                data-action="menu"
+                aria-haspopup="menu"
+                aria-expanded="false"
+                aria-label="Menu"
+              >
+                <svg class="ic" aria-hidden="true">
+                  <use href="#i-menu"></use>
+                </svg>
+              </button>
+              <div class="c-menu" data-role="menu" role="menu" hidden>
+                <button
+                  type="button"
+                  role="menuitem"
+                  data-action="view"
+                  data-target="permissions"
+                >
+                  Permissions
+                </button>
+              </div>
+            </div>
+          </header>
+          <div class="c-main" data-view="main">
+            <section class="c-deck">
+              <div class="c-talk">
+                <span class="c-engrave" id="c-talk-l">Talk</span>
+                <div
+                  class="c-talk-key"
+                  role="img"
+                  aria-labelledby="c-talk-l c-talk-k"
+                >
+                  <span class="c-lamp" aria-hidden="true"></span>
+                  <span class="c-key" id="c-talk-k" data-role="hotkey">fn</span>
+                </div>
+                <div class="c-talk-actions">
+                  <button
+                    type="button"
+                    class="c-btn"
+                    data-action="change-hotkey"
+                  >
+                    Change
+                  </button>
+                  <button
+                    type="button"
+                    class="c-btn"
+                    data-action="reset-fn"
+                    hidden
+                  >
+                    fn
+                  </button>
+                </div>
+              </div>
+              <div class="c-meter">
+                <canvas
+                  data-role="window-viz"
+                  width="196"
+                  height="112"
+                  aria-hidden="true"
+                ></canvas>
+                <span class="c-engrave">Input level</span>
+              </div>
+            </section>
+            <section class="c-channels">
+              <div class="c-ch">
+                <label class="c-engrave" for="c-mic">Input</label>
+                <select id="c-mic" class="c-select" data-role="mic"></select>
+              </div>
+              <div class="c-ch">
+                <label class="c-engrave" for="c-lang">Language</label>
+                <select id="c-lang" class="c-select" data-role="lang"></select>
+              </div>
+              <div class="c-ch">
+                <label class="c-engrave" for="c-model">Engine</label>
+                <div class="c-inline">
+                  <select
+                    id="c-model"
+                    class="c-select"
+                    data-role="model"
+                  ></select>
+                  <button
+                    type="button"
+                    class="c-icon-btn"
+                    data-action="download"
+                    aria-label="Download model"
+                  >
+                    <svg class="ic" aria-hidden="true">
+                      <use href="#i-download"></use>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div class="c-ch">
+                <span class="c-engrave" id="c-dict-l">Dictionary</span>
+                <div class="c-inline c-dict-line">
+                  <span class="c-count"
+                    ><span data-role="dict-count"></span
+                    ><span class="c-hint" data-role="dict-hint" hidden
+                      >, Whisper only</span
+                    ></span
+                  >
+                  <button
+                    type="button"
+                    class="c-btn"
+                    data-action="dict-open"
+                    aria-describedby="c-dict-l"
+                  >
+                    Edit
+                  </button>
+                </div>
+              </div>
+            </section>
+            <footer class="c-foot">
+              <div class="c-lcd" aria-live="polite">
+                <span data-role="status"></span
+                ><span class="c-lcd-sep" aria-hidden="true">/</span
+                ><span data-role="model-name"></span>
+                <span data-role="model-status"></span>
+                <span class="bar c-bar" data-role="download-bar" hidden></span>
+              </div>
+              <button
+                type="button"
+                class="c-btn is-primary"
+                data-action="restart"
+                hidden
+              >
+                Restart
+              </button>
+              <button type="button" class="c-btn" data-action="update">
+                Check for updates
+              </button>
+            </footer>
+          </div>
+          <div class="c-perms" data-view="permissions" hidden>
+            <h2 class="c-title">Permissions</h2>
+            <div class="c-perm" data-perm="mic">
+              <span class="c-perm-lamp" aria-hidden="true"></span>
+              <div>
+                <p class="c-perm-name">Microphone</p>
+                <p class="c-perm-why">Hears you while you hold the shortcut</p>
+              </div>
+              <span class="c-granted" data-role="perm-status">Granted</span>
+              <button type="button" class="c-btn" data-action="grant">
+                Grant
+              </button>
+            </div>
+            <div class="c-perm" data-perm="access">
+              <span class="c-perm-lamp" aria-hidden="true"></span>
+              <div>
+                <p class="c-perm-name">Accessibility</p>
+                <p class="c-perm-why">Reads the shortcut in any app</p>
+              </div>
+              <span class="c-granted" data-role="perm-status">Granted</span>
+              <button type="button" class="c-btn" data-action="grant">
+                Grant
+              </button>
+            </div>
+            <div class="c-perm" data-perm="se">
+              <span class="c-perm-lamp" aria-hidden="true"></span>
+              <div>
+                <p class="c-perm-name">System Events</p>
+                <p class="c-perm-why">
+                  Pastes the transcript where you are typing
+                </p>
+              </div>
+              <span class="c-granted" data-role="perm-status">Granted</span>
+              <button type="button" class="c-btn" data-action="grant">
+                Grant
+              </button>
+            </div>
+          </div>
+          <div class="c-dict" data-role="dict" hidden>
+            <div
+              class="c-dict-panel"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="c-dict-title"
+            >
+              <div class="c-dict-head">
+                <h2 id="c-dict-title" class="c-title">Dictionary</h2>
+                <button type="button" class="c-btn" data-action="dict-close">
+                  Done
+                </button>
+              </div>
+              <div class="c-dict-add">
+                <label class="sr-only" for="c-dict-in">Add a word</label>
+                <input
+                  id="c-dict-in"
+                  data-role="dict-input"
+                  placeholder="Add a word"
+                  autocomplete="off"
+                  spellcheck="false"
+                  aria-describedby="c-dict-err"
+                />
+                <button type="button" class="c-btn" data-action="dict-add">
+                  Add
+                </button>
+              </div>
+              <p
+                class="dict-error"
+                id="c-dict-err"
+                data-role="dict-error"
+                aria-live="polite"
+              ></p>
+              <ul class="c-dict-list" data-role="dict-list"></ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================== 03 SCOPE ============================== -->
+        <div
+          class="win v-scope"
+          data-window="scope"
+          style="--w: 400px; --h: 380px"
+          role="region"
+          aria-label="Scope settings window"
+          hidden
+        >
+          <div class="tl" aria-hidden="true"><i></i><i></i><i></i></div>
+          <header class="s-head">
+            <span class="s-logo">Vaper</span>
+            <nav class="s-tabs" role="tablist" aria-label="Sections">
+              <button
+                type="button"
+                role="tab"
+                id="s-tab-main"
+                data-action="view"
+                data-target="main"
+                aria-controls="s-panel-main"
+              >
+                Input
+              </button>
+              <button
+                type="button"
+                role="tab"
+                id="s-tab-dict"
+                data-action="view"
+                data-target="dictionary"
+                aria-controls="s-panel-dict"
+              >
+                Dictionary
+              </button>
+              <button
+                type="button"
+                role="tab"
+                id="s-tab-perm"
+                data-action="view"
+                data-target="permissions"
+                aria-controls="s-panel-perm"
+              >
+                Access
+              </button>
+            </nav>
+          </header>
+          <div
+            class="s-main"
+            data-view="main"
+            id="s-panel-main"
+            role="tabpanel"
+            aria-labelledby="s-tab-main"
+          >
+            <div class="s-screen">
+              <canvas
+                data-role="window-viz"
+                width="368"
+                height="88"
+                aria-hidden="true"
+              ></canvas>
+              <p class="s-hud" aria-live="polite">
+                <span class="s-hud-dot" aria-hidden="true"></span
+                ><span data-role="status"></span>
+              </p>
+            </div>
+            <div class="s-grid">
+              <div class="s-line">
+                <span class="s-label" id="s-key-l">Shortcut</span>
+                <div class="s-value">
+                  <kbd
+                    class="s-key"
+                    data-role="hotkey"
+                    aria-labelledby="s-key-l"
+                    >fn</kbd
+                  >
+                  <button
+                    type="button"
+                    class="s-btn"
+                    data-action="change-hotkey"
+                  >
+                    Rebind
+                  </button>
+                  <button
+                    type="button"
+                    class="s-btn"
+                    data-action="reset-fn"
+                    hidden
+                  >
+                    fn
+                  </button>
+                </div>
+              </div>
+              <div class="s-line">
+                <label class="s-label" for="s-mic">Input</label>
+                <div class="s-value">
+                  <select id="s-mic" class="s-select" data-role="mic"></select>
+                </div>
+              </div>
+              <div class="s-line">
+                <label class="s-label" for="s-lang">Language</label>
+                <div class="s-value">
+                  <select
+                    id="s-lang"
+                    class="s-select"
+                    data-role="lang"
+                  ></select>
+                </div>
+              </div>
+              <div class="s-line">
+                <label class="s-label" for="s-model">Engine</label>
+                <div class="s-value">
+                  <select
+                    id="s-model"
+                    class="s-select s-select-sm"
+                    data-role="model"
+                  ></select>
+                  <span class="s-status" data-role="model-status"></span>
+                  <span
+                    class="bar s-bar"
+                    data-role="download-bar"
+                    hidden
+                  ></span>
+                  <button
+                    type="button"
+                    class="s-icon-btn"
+                    data-action="download"
+                    aria-label="Download model"
+                  >
+                    <svg class="ic" aria-hidden="true">
+                      <use href="#i-download"></use>
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    class="s-btn is-primary"
+                    data-action="restart"
+                    hidden
+                  >
+                    Restart
+                  </button>
+                </div>
+              </div>
+            </div>
+            <footer class="s-foot">
+              <span class="s-ver" data-role="version"></span>
+              <button type="button" class="s-btn" data-action="update">
+                Check for updates
+              </button>
+            </footer>
+          </div>
+          <div
+            class="s-dict"
+            data-view="dictionary"
+            id="s-panel-dict"
+            role="tabpanel"
+            aria-labelledby="s-tab-dict"
+            hidden
+          >
+            <p class="s-note">
+              Words Whisper should spell exactly.
+              <span data-role="dict-count"></span>.<span
+                class="s-warn"
+                data-role="dict-hint"
+                hidden
+              >
+                The selected engine ignores the dictionary.</span
+              >
+            </p>
+            <div class="s-dict-add">
+              <label class="sr-only" for="s-dict-in">Add a word</label>
+              <input
+                id="s-dict-in"
+                data-role="dict-input"
+                placeholder="Add a word"
+                autocomplete="off"
+                spellcheck="false"
+                aria-describedby="s-dict-err"
+              />
+              <button type="button" class="s-btn" data-action="dict-add">
+                Add
+              </button>
+            </div>
+            <p
+              class="dict-error"
+              id="s-dict-err"
+              data-role="dict-error"
+              aria-live="polite"
+            ></p>
+            <ul class="s-dict-list" data-role="dict-list"></ul>
+          </div>
+          <div
+            class="s-perms"
+            data-view="permissions"
+            id="s-panel-perm"
+            role="tabpanel"
+            aria-labelledby="s-tab-perm"
+            hidden
+          >
+            <div class="s-perm" data-perm="mic">
+              <div>
+                <p class="s-perm-name">Microphone</p>
+                <p class="s-perm-why">Hears you while you hold the shortcut</p>
+              </div>
+              <span class="s-granted" data-role="perm-status"
+                ><svg class="ic" aria-hidden="true">
+                  <use href="#i-check"></use></svg
+                >Granted</span
+              >
+              <button type="button" class="s-btn" data-action="grant">
+                Grant
+              </button>
+            </div>
+            <div class="s-perm" data-perm="access">
+              <div>
+                <p class="s-perm-name">Accessibility</p>
+                <p class="s-perm-why">Reads the shortcut in any app</p>
+              </div>
+              <span class="s-granted" data-role="perm-status"
+                ><svg class="ic" aria-hidden="true">
+                  <use href="#i-check"></use></svg
+                >Granted</span
+              >
+              <button type="button" class="s-btn" data-action="grant">
+                Grant
+              </button>
+            </div>
+            <div class="s-perm" data-perm="se">
+              <div>
+                <p class="s-perm-name">System Events</p>
+                <p class="s-perm-why">
+                  Pastes the transcript where you are typing
+                </p>
+              </div>
+              <span class="s-granted" data-role="perm-status"
+                ><svg class="ic" aria-hidden="true">
+                  <use href="#i-check"></use></svg
+                >Granted</span
+              >
+              <button type="button" class="s-btn" data-action="grant">
+                Grant
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================== 04 TRANSCRIPT ============================== -->
+        <div
+          class="win v-transcript"
+          data-window="transcript"
+          style="--w: 400px; --h: 356px"
+          role="region"
+          aria-label="Transcript settings window"
+          hidden
+        >
+          <div class="tl" aria-hidden="true"><i></i><i></i><i></i></div>
+          <header class="t-head">
+            <div class="t-brand" data-view-only="main">
+              <span class="t-logo">Vaper</span
+              ><span class="t-ver" data-role="version"></span>
+            </div>
+            <button
+              type="button"
+              class="t-back"
+              data-action="view"
+              data-target="main"
+              data-view-only="permissions"
+            >
+              <svg class="ic" aria-hidden="true"><use href="#i-back"></use></svg
+              >Settings
+            </button>
+            <div class="menu-wrap">
+              <button
+                type="button"
+                class="t-icon-btn"
+                data-action="menu"
+                aria-haspopup="menu"
+                aria-expanded="false"
+                aria-label="Menu"
+              >
+                <svg class="ic" aria-hidden="true">
+                  <use href="#i-menu"></use>
+                </svg>
+              </button>
+              <div class="t-menu" data-role="menu" role="menu" hidden>
+                <button
+                  type="button"
+                  role="menuitem"
+                  data-action="view"
+                  data-target="permissions"
+                >
+                  Permissions
+                </button>
+              </div>
+            </div>
+          </header>
+          <div class="t-main" data-view="main">
+            <p class="t-sentence">
+              Hold <kbd class="t-key" data-role="hotkey">fn</kbd> to dictate in
+              <span class="t-field"
+                ><label class="sr-only" for="t-lang">Language</label
+                ><select
+                  id="t-lang"
+                  class="t-select"
+                  data-role="lang"
+                  data-autosize
+                ></select
+              ></span>
+              from
+              <span class="t-field"
+                ><label class="sr-only" for="t-mic">Microphone</label
+                ><select
+                  id="t-mic"
+                  class="t-select"
+                  data-role="mic"
+                  data-autosize
+                ></select></span
+              >, written by
+              <span class="t-field"
+                ><label class="sr-only" for="t-model"
+                  >Transcription engine</label
+                ><select
+                  id="t-model"
+                  class="t-select"
+                  data-role="model"
+                  data-autosize
+                ></select></span
+              >.
+            </p>
+            <canvas
+              class="t-ink"
+              data-role="window-viz"
+              width="352"
+              height="26"
+              aria-hidden="true"
+            ></canvas>
+            <div class="t-meta">
+              <button type="button" class="t-link" data-action="change-hotkey">
+                Change shortcut
+              </button>
+              <button
+                type="button"
+                class="t-link"
+                data-action="reset-fn"
+                hidden
+              >
+                Use fn
+              </button>
+              <button type="button" class="t-link" data-action="dict-open">
+                Dictionary, <span data-role="dict-count"></span>
+              </button>
+              <span class="t-hint" data-role="dict-hint" hidden
+                >Whisper only</span
+              >
+            </div>
+            <footer class="t-foot">
+              <p class="t-status" aria-live="polite">
+                <span data-role="status"></span
+                ><span aria-hidden="true"> · </span
+                ><span data-role="model-status"></span>
+              </p>
+              <span class="bar t-bar" data-role="download-bar" hidden></span>
+              <button type="button" class="t-btn" data-action="download">
+                <svg class="ic" aria-hidden="true">
+                  <use href="#i-download"></use></svg
+                >Download
+              </button>
+              <button
+                type="button"
+                class="t-btn is-primary"
+                data-action="restart"
+                hidden
+              >
+                Restart to apply
+              </button>
+              <button type="button" class="t-btn" data-action="update">
+                Check for updates
+              </button>
+            </footer>
+          </div>
+          <div class="t-perms" data-view="permissions" hidden>
+            <h2 class="t-title">Vaper needs three things from macOS.</h2>
+            <ol class="t-perm-list">
+              <li data-perm="mic">
+                <p>
+                  <span class="t-perm-name">Microphone</span>, to hear you while
+                  you hold the shortcut.
+                </p>
+                <span class="t-granted" data-role="perm-status"
+                  ><svg class="ic" aria-hidden="true">
+                    <use href="#i-check"></use></svg
+                  >Granted</span
+                >
+                <button type="button" class="t-btn" data-action="grant">
+                  Grant
+                </button>
+              </li>
+              <li data-perm="access">
+                <p>
+                  <span class="t-perm-name">Accessibility</span>, to notice the
+                  shortcut in any app.
+                </p>
+                <span class="t-granted" data-role="perm-status"
+                  ><svg class="ic" aria-hidden="true">
+                    <use href="#i-check"></use></svg
+                  >Granted</span
+                >
+                <button type="button" class="t-btn" data-action="grant">
+                  Grant
+                </button>
+              </li>
+              <li data-perm="se">
+                <p>
+                  <span class="t-perm-name">System Events</span>, to paste where
+                  you are typing.
+                </p>
+                <span class="t-granted" data-role="perm-status"
+                  ><svg class="ic" aria-hidden="true">
+                    <use href="#i-check"></use></svg
+                  >Granted</span
+                >
+                <button type="button" class="t-btn" data-action="grant">
+                  Grant
+                </button>
+              </li>
+            </ol>
+          </div>
+          <div class="t-sheet" data-role="dict" hidden>
+            <div
+              class="t-sheet-panel"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="t-dict-title"
+            >
+              <div class="t-sheet-head">
+                <h2 id="t-dict-title" class="t-title">Dictionary</h2>
+                <button type="button" class="t-btn" data-action="dict-close">
+                  Done
+                </button>
+              </div>
+              <p class="t-sheet-note">
+                Names and jargon Whisper should always spell your way.
+              </p>
+              <div class="t-dict-add">
+                <label class="sr-only" for="t-dict-in">Add a word</label>
+                <input
+                  id="t-dict-in"
+                  data-role="dict-input"
+                  placeholder="Add a word"
+                  autocomplete="off"
+                  spellcheck="false"
+                  aria-describedby="t-dict-err"
+                />
+                <button type="button" class="t-btn" data-action="dict-add">
+                  Add
+                </button>
+              </div>
+              <p
+                class="dict-error"
+                id="t-dict-err"
+                data-role="dict-error"
+                aria-live="polite"
+              ></p>
+              <ul class="t-dict-list" data-role="dict-list"></ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================== 05 MERCURY ============================== -->
+        <div
+          class="win v-mercury"
+          data-window="mercury"
+          style="--w: 400px; --h: 470px"
+          role="region"
+          aria-label="Mercury settings window"
+          hidden
+        >
+          <div class="tl" aria-hidden="true"><i></i><i></i><i></i></div>
+          <header class="m-head">
+            <div class="m-brand" data-view-only="main">
+              <span class="m-logo">Vaper</span>
+            </div>
+            <button
+              type="button"
+              class="m-back"
+              data-action="view"
+              data-target="main"
+              data-view-only="permissions"
+            >
+              <svg class="ic" aria-hidden="true"><use href="#i-back"></use></svg
+              >Settings
+            </button>
+            <div class="menu-wrap">
+              <button
+                type="button"
+                class="m-icon-btn"
+                data-action="menu"
+                aria-haspopup="menu"
+                aria-expanded="false"
+                aria-label="Menu"
+              >
+                <svg class="ic" aria-hidden="true">
+                  <use href="#i-menu"></use>
+                </svg>
+              </button>
+              <div class="m-menu" data-role="menu" role="menu" hidden>
+                <button
+                  type="button"
+                  role="menuitem"
+                  data-action="view"
+                  data-target="permissions"
+                >
+                  Permissions
+                </button>
+              </div>
+            </div>
+          </header>
+          <div class="m-main" data-view="main">
+            <section class="m-hero" aria-label="Push to talk">
+              <div class="m-orb-wrap">
+                <canvas
+                  class="m-orb"
+                  data-role="window-viz"
+                  width="132"
+                  height="132"
+                  aria-hidden="true"
+                ></canvas>
+              </div>
+              <p class="m-hold" aria-live="polite">
+                <span data-role="status"></span
+                ><kbd class="m-key" data-role="hotkey">fn</kbd>
+              </p>
+              <div class="m-hero-actions">
+                <button
+                  type="button"
+                  class="m-link"
+                  data-action="change-hotkey"
+                >
+                  Change shortcut
+                </button>
+                <button
+                  type="button"
+                  class="m-link"
+                  data-action="reset-fn"
+                  hidden
+                >
+                  Use fn
+                </button>
+              </div>
+            </section>
+            <section class="m-tiles" aria-label="Settings">
+              <div class="m-tile">
+                <label class="m-tile-label" for="m-mic"
+                  ><svg class="ic" aria-hidden="true">
+                    <use href="#i-mic"></use></svg
+                  >Microphone</label
+                >
+                <select id="m-mic" class="m-select" data-role="mic"></select>
+              </div>
+              <div class="m-tile">
+                <label class="m-tile-label" for="m-lang"
+                  ><svg class="ic" aria-hidden="true">
+                    <use href="#i-globe"></use></svg
+                  >Language</label
+                >
+                <select id="m-lang" class="m-select" data-role="lang"></select>
+              </div>
+              <div class="m-tile">
+                <label class="m-tile-label" for="m-model"
+                  ><svg class="ic" aria-hidden="true">
+                    <use href="#i-cpu"></use></svg
+                  >Engine</label
+                >
+                <div class="m-tile-row">
+                  <select
+                    id="m-model"
+                    class="m-select"
+                    data-role="model"
+                  ></select>
+                  <button
+                    type="button"
+                    class="m-icon-btn sm"
+                    data-action="download"
+                    aria-label="Download model"
+                  >
+                    <svg class="ic" aria-hidden="true">
+                      <use href="#i-download"></use>
+                    </svg>
+                  </button>
+                </div>
+                <p class="m-tile-foot">
+                  <span data-role="model-status"></span
+                  ><span
+                    class="bar m-bar"
+                    data-role="download-bar"
+                    hidden
+                  ></span>
+                </p>
+              </div>
+              <div class="m-tile">
+                <span class="m-tile-label" id="m-dict-l"
+                  ><svg class="ic" aria-hidden="true">
+                    <use href="#i-book"></use></svg
+                  >Dictionary</span
+                >
+                <button
+                  type="button"
+                  class="m-tile-btn"
+                  data-action="dict-open"
+                  aria-describedby="m-dict-l"
+                >
+                  <span data-role="dict-count"></span
+                  ><span class="m-tile-edit">Edit</span>
+                </button>
+                <p class="m-tile-foot" data-role="dict-hint" hidden>
+                  Whisper only
+                </p>
+              </div>
+            </section>
+            <footer class="m-foot">
+              <span class="m-ver" data-role="version"></span>
+              <button
+                type="button"
+                class="m-btn is-primary"
+                data-action="restart"
+                hidden
+              >
+                Restart to apply
+              </button>
+              <button type="button" class="m-btn" data-action="update">
+                Check for updates
+              </button>
+            </footer>
+          </div>
+          <div class="m-perms" data-view="permissions" hidden>
+            <h2 class="m-title">Permissions</h2>
+            <div class="m-perm" data-perm="mic">
+              <div>
+                <p class="m-perm-name">Microphone</p>
+                <p class="m-perm-why">Hears you while you hold the shortcut</p>
+              </div>
+              <span class="m-granted" data-role="perm-status"
+                ><svg class="ic" aria-hidden="true">
+                  <use href="#i-check"></use></svg
+                >Granted</span
+              >
+              <button type="button" class="m-btn" data-action="grant">
+                Grant
+              </button>
+            </div>
+            <div class="m-perm" data-perm="access">
+              <div>
+                <p class="m-perm-name">Accessibility</p>
+                <p class="m-perm-why">Reads the shortcut in any app</p>
+              </div>
+              <span class="m-granted" data-role="perm-status"
+                ><svg class="ic" aria-hidden="true">
+                  <use href="#i-check"></use></svg
+                >Granted</span
+              >
+              <button type="button" class="m-btn" data-action="grant">
+                Grant
+              </button>
+            </div>
+            <div class="m-perm" data-perm="se">
+              <div>
+                <p class="m-perm-name">System Events</p>
+                <p class="m-perm-why">
+                  Pastes the transcript where you are typing
+                </p>
+              </div>
+              <span class="m-granted" data-role="perm-status"
+                ><svg class="ic" aria-hidden="true">
+                  <use href="#i-check"></use></svg
+                >Granted</span
+              >
+              <button type="button" class="m-btn" data-action="grant">
+                Grant
+              </button>
+            </div>
+          </div>
+          <div class="m-sheet" data-role="dict" hidden>
+            <div
+              class="m-sheet-panel"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="m-dict-title"
+            >
+              <div class="m-sheet-head">
+                <h2 id="m-dict-title" class="m-title">Dictionary</h2>
+                <button type="button" class="m-btn" data-action="dict-close">
+                  Done
+                </button>
+              </div>
+              <div class="m-dict-add">
+                <label class="sr-only" for="m-dict-in">Add a word</label>
+                <input
+                  id="m-dict-in"
+                  data-role="dict-input"
+                  placeholder="Add a word"
+                  autocomplete="off"
+                  spellcheck="false"
+                  aria-describedby="m-dict-err"
+                />
+                <button type="button" class="m-btn" data-action="dict-add">
+                  Add
+                </button>
+              </div>
+              <p
+                class="dict-error"
+                id="m-dict-err"
+                data-role="dict-error"
+                aria-live="polite"
+              ></p>
+              <ul class="m-dict-list" data-role="dict-list"></ul>
+            </div>
+          </div>
+        </div>
+
+        <p class="lab-caption" id="v-size">Settings window, 400 × 340</p>
+      </section>
+
+      <section class="lab-desk-col" aria-label="Recording overlay on a desktop">
+        <div class="desk" data-wall="dark">
+          <div class="desk-menubar" aria-hidden="true">
+            <span class="desk-app">Notes</span><span>File</span><span>Edit</span
+            ><span>Format</span>
+            <span class="desk-clock">Tue 21 Oct 9:41</span>
+          </div>
+          <div class="notes" aria-label="Notes app receiving pasted text">
+            <div class="notes-bar" aria-hidden="true">
+              <span class="tl-mini"><i></i><i></i><i></i></span>Untitled note
+            </div>
+            <div class="notes-body" id="notes-body" aria-live="off">
+              <p class="notes-placeholder">
+                Transcripts paste here when you let go.
+              </p>
+            </div>
+          </div>
+          <div class="ov-window" aria-hidden="true">
+            <div class="ov ov-plume" data-overlay="plume">
+              <canvas width="340" height="150"></canvas>
+              <p class="ov-plume-text" data-role="partial"></p>
+            </div>
+            <div class="ov ov-console" data-overlay="console" hidden>
+              <canvas width="340" height="150"></canvas>
+              <p class="ov-console-text" data-role="partial"></p>
+            </div>
+            <div class="ov ov-scope" data-overlay="scope" hidden>
+              <canvas width="340" height="150"></canvas>
+              <p class="ov-scope-text" data-role="partial"></p>
+            </div>
+            <div class="ov ov-transcript" data-overlay="transcript" hidden>
+              <canvas width="340" height="150"></canvas>
+              <p class="ov-tr-text" data-role="partial"></p>
+            </div>
+            <div class="ov ov-mercury" data-overlay="mercury" hidden>
+              <div class="ov-pill">
+                <canvas class="ov-pill-orb" width="48" height="48"></canvas>
+                <p class="ov-pill-text" data-role="partial"></p>
+                <span class="ov-pill-time"
+                  ><span class="ov-pill-dot"></span
+                  ><span data-role="elapsed">0:00.0</span></span
+                >
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="lab-caption">
+          Recording overlay, 340 × 150, transparent and click-through over
+          whatever you are doing
+        </p>
+      </section>
+    </main>
+
+    <script src="lab-util.js"></script>
+    <script src="v-plume.js"></script>
+    <script src="v-console.js"></script>
+    <script src="v-scope.js"></script>
+    <script src="v-transcript.js"></script>
+    <script src="v-mercury.js"></script>
+    <script src="lab.js"></script>
+  </body>
+</html>

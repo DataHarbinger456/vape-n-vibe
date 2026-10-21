@@ -1,204 +1,232 @@
-const canvas = document.getElementById("viz");
-const ctx = canvas.getContext("2d");
-const partialTextEl = document.getElementById("partial-text");
-const viewportWidth = canvas.width;
-const viewportHeight = canvas.height;
-const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
-const reducedMotion = window.matchMedia(
-  "(prefers-reduced-motion: reduce)",
-).matches;
-const barCount = 9;
+"use strict";
 
-canvas.style.width = `${viewportWidth}px`;
-canvas.style.height = `${viewportHeight}px`;
-canvas.width = Math.round(viewportWidth * pixelRatio);
-canvas.height = Math.round(viewportHeight * pixelRatio);
-ctx.scale(pixelRatio, pixelRatio);
+/**
+ * Recording overlay: a black pill with a chrome orb. It grows to show your
+ * words and a timer while you talk, then contracts to a single orbiting
+ * bead while the transcript is produced.
+ */
+(() => {
+  const { createBandSmoother, createOrb, setupCanvas } = window.VaperOrb;
+  const pill = document.getElementById("pill");
+  const partialTextEl = document.getElementById("partial-text");
+  const elapsedEl = document.getElementById("elapsed");
+  const view = setupCanvas(document.getElementById("pill-orb"));
+  const orb = createOrb(72);
+  const smoother = createBandSmoother();
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
-let mode = "idle";
-let renderedMode = "recording";
-let freqData = null;
-let smoothBars = new Float32Array(barCount);
-let fadeAlpha = 0;
-let targetAlpha = 0;
-let processingPhase = 0;
-let previousFrameTime = 0;
-let loopRunning = false;
+  // Main sends "idle" on key release and "processing" only once the audio
+  // reaches the pipeline (after the renderer's stop tail). Show the bead
+  // straight away instead of collapsing in between; if the pipeline never
+  // confirms, give up after this long.
+  const CONFIRM_TIMEOUT_MS = 3000;
+  // Keep drawing while the pill fades out.
+  const FADE_MS = 450;
 
-function startLoop() {
-  if (!loopRunning) {
-    loopRunning = true;
-    previousFrameTime = 0;
-    requestAnimationFrame(draw);
-  }
-}
+  let mode = "idle"; // what the pill shows: idle | recording | processing
+  let awaitingPipeline = false;
+  let confirmTimer = null;
+  let bins = null;
+  let recordStart = 0;
+  let recordEnd = 0;
+  let running = false;
+  let lastFrame = 0;
+  let stopAt = 0;
+  let shownElapsed = "";
 
-function draw(timestamp) {
-  const deltaTime = previousFrameTime
-    ? Math.min(timestamp - previousFrameTime, 32)
-    : 16.67;
-  previousFrameTime = timestamp;
-
-  const fadeEase = reducedMotion ? 1 : 1 - Math.pow(0.84, deltaTime / 16.67);
-  fadeAlpha += (targetAlpha - fadeAlpha) * fadeEase;
-
-  if (fadeAlpha < 0.01 && targetAlpha === 0) {
-    fadeAlpha = 0;
-    ctx.clearRect(0, 0, viewportWidth, viewportHeight);
-    loopRunning = false;
-    return;
+  function formatElapsed(ms) {
+    const s = Math.max(0, ms) / 1000;
+    const m = Math.floor(s / 60);
+    const rest = (s % 60).toFixed(1).padStart(4, "0");
+    return `${m}:${rest}`;
   }
 
-  ctx.clearRect(0, 0, viewportWidth, viewportHeight);
-  ctx.globalAlpha = fadeAlpha;
+  // --- Live caption ---
+  // Partials arrive as the whole running transcript. Only words that are new
+  // (or revised) are added, each fading up out of a soft blur, and the line
+  // glides left to make room instead of jumping.
+  const MAX_WORDS = 40; // older words are masked off the left edge anyway
+  const GLIDE_MS = 420;
+  const STAGGER_MS = 45;
+  const track = document.createElement("span");
+  track.className = "pill-track";
+  track.dir = "auto"; // isolate RTL captions without parsing them as HTML
+  partialTextEl.appendChild(track);
+  let shownWords = [];
 
-  if (renderedMode === "recording") {
-    drawRecordingSignal();
-  } else if (renderedMode === "processing") {
-    drawProcessingSignal(deltaTime, timestamp);
+  function wordSpan(word, delay) {
+    const span = document.createElement("span");
+    span.className = "w";
+    span.textContent = word;
+    if (delay) span.style.animationDelay = `${delay}ms`;
+    return span;
   }
 
-  ctx.globalAlpha = 1;
-
-  if (reducedMotion && targetAlpha === 1) {
-    loopRunning = false;
-    return;
-  }
-  requestAnimationFrame(draw);
-}
-
-function drawStatusDot(color, alpha = 1) {
-  ctx.beginPath();
-  ctx.arc(16, viewportHeight / 2, 3.5, 0, Math.PI * 2);
-  ctx.fillStyle = color;
-  ctx.globalAlpha = fadeAlpha * alpha;
-  ctx.fill();
-  ctx.globalAlpha = fadeAlpha;
-}
-
-function readBarLevel(index) {
-  if (!freqData || freqData.length === 0) return 0.08;
-
-  const usableBins = Math.max(1, Math.floor(freqData.length * 0.45));
-  const start = Math.floor((index / barCount) * usableBins);
-  const end = Math.max(
-    start + 1,
-    Math.floor(((index + 1) / barCount) * usableBins),
-  );
-  let total = 0;
-  for (let bin = start; bin < end; bin++) total += freqData[bin];
-  const average = total / (end - start) / 255;
-
-  return Math.min(1, Math.max(0, (average - 0.06) / 0.64));
-}
-
-function drawRecordingSignal() {
-  const centerY = viewportHeight / 2;
-  const barStartX = 38;
-  let averageLevel = 0;
-
-  for (let index = 0; index < barCount; index++) {
-    const rawLevel = reducedMotion ? 0.2 : readBarLevel(index);
-    const smoothing = rawLevel > smoothBars[index] ? 0.38 : 0.14;
-    smoothBars[index] += (rawLevel - smoothBars[index]) * smoothing;
-    averageLevel += smoothBars[index];
-
-    const barHeight = 3 + smoothBars[index] * 15;
-    const x = barStartX + index * 8;
-    ctx.beginPath();
-    ctx.moveTo(x, centerY - barHeight / 2);
-    ctx.lineTo(x, centerY + barHeight / 2);
-    ctx.strokeStyle = `rgba(255, 113, 107, ${0.58 + smoothBars[index] * 0.42})`;
-    ctx.lineWidth = 2.5;
-    ctx.lineCap = "round";
-    ctx.stroke();
+  /** Same word still being recognised ("thir" -> "thirty"): grow in place. */
+  function isRefinement(before, after) {
+    return before.startsWith(after) || after.startsWith(before);
   }
 
-  averageLevel /= barCount;
-  drawStatusDot("#ff716b", 0.72 + averageLevel * 0.28);
-}
+  /**
+   * Slide the line from where the anchor word was drawn to where it now
+   * rests (FLIP). Measured with the transform cleared, so a glide already
+   * in flight continues smoothly from its current position.
+   */
+  function glide(anchor, beforeRight) {
+    if (reducedMotion.matches || beforeRight === null) return;
+    track.style.transition = "none";
+    track.style.transform = "none";
+    const delta = beforeRight - anchor.getBoundingClientRect().right;
+    if (Math.abs(delta) < 0.5) return;
+    track.style.transform = `translateX(${delta}px)`;
+    void track.offsetWidth;
+    track.style.transition = `transform ${GLIDE_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`;
+    track.style.transform = "none";
+  }
 
-function drawProcessingSignal(deltaTime, timestamp) {
-  const centerY = viewportHeight / 2;
-  const railStart = 34;
-  const railEnd = 108;
-  const railLength = railEnd - railStart;
+  function setPartialText(text) {
+    const words = text ? text.split(/\s+/).filter(Boolean) : [];
+    if (words.length === 0) {
+      track.textContent = "";
+      track.style.transform = "none";
+      shownWords = [];
+      partialTextEl.classList.add("is-empty");
+      return;
+    }
+    partialTextEl.classList.remove("is-empty");
 
-  const pulseAlpha = reducedMotion
-    ? 0.82
-    : 0.76 + Math.sin(timestamp / 360) * 0.16;
-  drawStatusDot("#b7f774", pulseAlpha);
+    // First word that differs from what is already on screen.
+    let k = 0;
+    while (
+      k < shownWords.length &&
+      k < words.length &&
+      shownWords[k] === words[k]
+    ) {
+      k++;
+    }
+    if (k === shownWords.length && k === words.length) return;
 
-  ctx.beginPath();
-  ctx.moveTo(railStart, centerY);
-  ctx.lineTo(railEnd, centerY);
-  ctx.strokeStyle = "rgba(183, 247, 116, 0.18)";
-  ctx.lineWidth = 1.5;
-  ctx.lineCap = "round";
-  ctx.stroke();
+    // Where the last persistent word sits now, to glide from it.
+    const spans = track.querySelectorAll(".w");
+    const anchor = spans[k - 1] || null;
+    const beforeRight = anchor ? anchor.getBoundingClientRect().right : null;
 
-  if (reducedMotion) {
-    [0.34, 0.5, 0.66].forEach((position, index) => {
-      const x = railStart + railLength * position;
-      ctx.beginPath();
-      ctx.moveTo(x - 3, centerY);
-      ctx.lineTo(x + 3, centerY);
-      ctx.strokeStyle = `rgba(183, 247, 116, ${0.38 + index * 0.2})`;
-      ctx.lineWidth = 2;
-      ctx.stroke();
+    let keep = k;
+    if (
+      k < shownWords.length &&
+      k < words.length &&
+      isRefinement(shownWords[k], words[k])
+    ) {
+      spans[k].textContent = words[k];
+      keep = k + 1;
+    }
+    for (let i = spans.length - 1; i >= keep; i--) {
+      const prev = spans[i].previousSibling;
+      if (prev && prev.nodeType === Node.TEXT_NODE) prev.remove();
+      spans[i].remove();
+    }
+    words.slice(keep).forEach((word, i) => {
+      if (track.childNodes.length) track.append(" ");
+      track.append(wordSpan(word, Math.min(i, 6) * STAGGER_MS));
     });
-    return;
+
+    // Drop words long since scrolled off the left.
+    let extra = track.querySelectorAll(".w").length - MAX_WORDS;
+    while (extra-- > 0 && track.firstChild) {
+      track.firstChild.remove();
+      if (track.firstChild && track.firstChild.nodeType === Node.TEXT_NODE) {
+        track.firstChild.remove();
+      }
+    }
+    shownWords = words;
+    // Right-to-left captions grow leftward, so pin and fade the other edge.
+    partialTextEl.classList.toggle("rtl", track.matches(":dir(rtl)"));
+
+    if (anchor && anchor.isConnected) glide(anchor, beforeRight);
   }
 
-  processingPhase = (processingPhase + deltaTime / 1050) % 1;
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(railStart - 1, centerY - 6, railLength + 2, 12);
-  ctx.clip();
-
-  [0, 0.12, 0.24].forEach((trailOffset, index) => {
-    const phase = (processingPhase - trailOffset + 1) % 1;
-    const x = railStart + phase * railLength;
-    ctx.beginPath();
-    ctx.moveTo(x - 9, centerY);
-    ctx.lineTo(x, centerY);
-    ctx.strokeStyle = `rgba(183, 247, 116, ${[0.92, 0.44, 0.18][index]})`;
-    ctx.lineWidth = index === 0 ? 2.5 : 2;
-    ctx.lineCap = "round";
-    ctx.stroke();
-  });
-  ctx.restore();
-}
-
-// --- IPC listeners via preload bridge ---
-window.vizBridge.onVizMode((newMode) => {
-  mode = newMode;
-  if (mode === "idle") {
-    targetAlpha = 0;
-    canvas.classList.remove("visible");
-    partialTextEl.textContent = "";
-  } else {
-    renderedMode = mode;
-    targetAlpha = 1;
-    canvas.classList.add("visible");
-    if (mode === "processing") {
-      processingPhase = 0;
-      smoothBars.fill(0);
+  function show(next) {
+    mode = next;
+    pill.dataset.mode = next;
+    if (next === "idle") {
+      setPartialText("");
+      stopAt = performance.now() + FADE_MS;
+    }
+    if (!running) {
+      running = true;
+      requestAnimationFrame(frame);
     }
   }
-  startLoop();
-});
 
-window.vizBridge.onVizFreq((data) => {
-  freqData = data;
-});
+  function frame(ts) {
+    const dt = lastFrame ? Math.min(ts - lastFrame, 50) : 16.67;
+    lastFrame = ts;
+    const live = mode === "recording" && !recordEnd;
+    const { bands, level } = smoother.update(live ? bins : null, dt);
+    view.ctx.clearRect(0, 0, view.w, view.h);
+    orb.render(view.ctx, 0, 0, view.w, {
+      dt,
+      bands,
+      energy: live ? level : 0,
+      mood: mode,
+      reduced: reducedMotion.matches,
+    });
 
-window.vizBridge.onPartialText((text) => {
-  partialTextEl.textContent = "";
-  if (text) {
-    // Isolate text direction without injecting transcription content as HTML.
-    const isolatedText = document.createElement("bdi");
-    isolatedText.textContent = text;
-    partialTextEl.appendChild(isolatedText);
+    const elapsed = formatElapsed((recordEnd || ts) - recordStart);
+    if (elapsed !== shownElapsed) {
+      elapsedEl.textContent = elapsed;
+      shownElapsed = elapsed;
+    }
+
+    if (mode === "idle" && ts > stopAt) {
+      running = false;
+      lastFrame = 0;
+      return;
+    }
+    requestAnimationFrame(frame);
   }
-});
+
+  function clearConfirm() {
+    awaitingPipeline = false;
+    clearTimeout(confirmTimer);
+    confirmTimer = null;
+  }
+
+  window.vizBridge.onVizMode((newMode) => {
+    if (newMode === "recording") {
+      clearConfirm();
+      recordStart = performance.now();
+      recordEnd = 0;
+      bins = null;
+      setPartialText("");
+      show("recording");
+    } else if (newMode === "processing") {
+      clearConfirm();
+      if (!recordEnd) recordEnd = performance.now();
+      show("processing");
+    } else if (mode === "recording") {
+      // Key released: assume the pipeline will pick this up.
+      recordEnd = performance.now();
+      awaitingPipeline = true;
+      confirmTimer = setTimeout(() => {
+        if (awaitingPipeline) {
+          clearConfirm();
+          show("idle");
+        }
+      }, CONFIRM_TIMEOUT_MS);
+      show("processing");
+    } else {
+      // Silent clip, finished transcript, or an error: close the pill.
+      clearConfirm();
+      show("idle");
+    }
+  });
+
+  window.vizBridge.onVizFreq((data) => {
+    bins = data;
+  });
+
+  window.vizBridge.onPartialText((text) => {
+    setPartialText(mode === "idle" ? "" : text);
+  });
+})();

@@ -31,6 +31,8 @@ src/
     preload-overlay.js     # Overlay window IPC bridge
   renderer/
     index.html + renderer.js + styles.css    # Settings UI
+    hero.js                # Settings-window orb (reacts to the mic)
+    orb.js                 # Mercury metaball orb, shared by both windows
     visualizer.html + visualizer.js + visualizer.css  # Recording overlay
   native/fn_key_monitor.mm # macOS fn key via IOKit
   native/apple_speech.swift # Apple SpeechAnalyzer helper (scripts/build-apple-speech.sh)

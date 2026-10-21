@@ -4,14 +4,26 @@
     <meta charset="UTF-8" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self'"
+      content="default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com"
     />
     <title>Visualizer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@400..600&family=Geist+Mono:wght@500&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="visualizer.css" />
   </head>
   <body>
-    <canvas id="viz" width="124" height="38" aria-hidden="true"></canvas>
-    <div id="partial-text"></div>
+    <div class="pill" id="pill" data-mode="idle" aria-hidden="true">
+      <canvas class="pill-orb" id="pill-orb" width="48" height="48"></canvas>
+      <p class="pill-text is-empty" id="partial-text"></p>
+      <span class="pill-time"
+        ><span class="pill-dot"></span><span id="elapsed">0:00.0</span></span
+      >
+    </div>
+    <script src="orb.js"></script>
     <script src="visualizer.js"></script>
   </body>
 </html>

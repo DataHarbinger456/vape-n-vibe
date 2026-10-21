@@ -14,6 +14,7 @@
     "postinstall": "electron-builder install-app-deps",
     "build:whisper": "bash scripts/build-whisper-server.sh",
     "build:apple-speech": "bash scripts/build-apple-speech.sh",
+    "build:brand": "bash scripts/build-brand.sh",
     "prebuild": "bash scripts/build-whisper-server.sh && bash scripts/build-apple-speech.sh",
     "build": "electron-builder --publish never",
     "build:mac": "electron-builder --mac --publish never",
@@ -101,14 +102,21 @@
     },
     "dmg": {
       "artifactName": "vape-n-vibe.${ext}",
+      "background": "installer/background.png",
+      "window": {
+        "width": 660,
+        "height": 420
+      },
+      "iconSize": 128,
+      "iconTextSize": 12,
       "contents": [
         {
-          "x": 130,
-          "y": 220
+          "x": 170,
+          "y": 206
         },
         {
-          "x": 410,
-          "y": 220,
+          "x": 490,
+          "y": 206,
           "type": "link",
           "path": "/Applications"
         }

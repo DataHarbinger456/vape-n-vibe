@@ -10,47 +10,105 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Slackey&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@400..700&family=Geist+Mono:wght@400..600&family=Slackey&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css" />
   </head>
-  <body>
-    <header>
-      <div class="logo-wrap">
-        <span class="logo" id="logo">Vaper</span>
-        <button class="back-btn hidden" id="back-btn" aria-label="Back">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            class="lucide lucide-chevron-left"
-          >
-            <path d="m15 18-6-6 6-6" />
-          </svg>
-        </button>
-        <span class="version-badge" id="version-badge"></span>
-      </div>
+  <body data-state="idle">
+    <!-- Lucide icon paths (project dependency), referenced with <use>. -->
+    <svg class="icon-sprite" aria-hidden="true">
+      <symbol id="i-menu" viewBox="0 0 24 24">
+        <path d="M4 5h16M4 12h16M4 19h16" />
+      </symbol>
+      <symbol id="i-back" viewBox="0 0 24 24">
+        <path d="m15 18-6-6 6-6" />
+      </symbol>
+      <symbol id="i-download" viewBox="0 0 24 24">
+        <path d="M12 15V3" />
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+        <path d="m7 10 5 5 5-5" />
+      </symbol>
+      <symbol id="i-x" viewBox="0 0 24 24">
+        <path d="M18 6 6 18M6 6l12 12" />
+      </symbol>
+      <!-- Polished-metal ink: bright sky, dark horizon, lit floor. -->
+      <linearGradient
+        id="chrome-ink"
+        gradientUnits="userSpaceOnUse"
+        x1="0"
+        y1="2"
+        x2="0"
+        y2="22"
+      >
+        <stop offset="0" stop-color="#ffffff" />
+        <stop offset="0.46" stop-color="#d6d6db" />
+        <stop offset="0.54" stop-color="#7c7c84" />
+        <stop offset="1" stop-color="#c4c4ca" />
+      </linearGradient>
+      <symbol id="i-chevron" viewBox="0 0 24 24">
+        <path d="m9 18 6-6-6-6" />
+      </symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24">
+        <path d="M5 12h14M12 5v14" />
+      </symbol>
+      <symbol id="i-arrow" viewBox="0 0 24 24">
+        <path d="M5 12h14" />
+        <path d="m12 5 7 7-7 7" />
+      </symbol>
+      <symbol id="i-check" viewBox="0 0 24 24">
+        <path d="M20 6 9 17l-5-5" />
+      </symbol>
+      <symbol id="i-mic" viewBox="0 0 24 24">
+        <path d="M12 19v3" />
+        <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+        <rect x="9" y="2" width="6" height="13" rx="3" />
+      </symbol>
+      <symbol id="i-globe" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="10" />
+        <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
+        <path d="M2 12h20" />
+      </symbol>
+      <symbol id="i-cpu" viewBox="0 0 24 24">
+        <path
+          d="M12 20v2M12 2v2M17 20v2M17 2v2M2 12h2M2 17h2M2 7h2M20 12h2M20 17h2M20 7h2M7 20v2M7 2v2"
+        />
+        <rect x="4" y="4" width="16" height="16" rx="2" />
+        <rect x="8" y="8" width="8" height="8" rx="1" />
+      </symbol>
+      <symbol id="i-book" viewBox="0 0 24 24">
+        <path
+          d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"
+        />
+        <path d="m8 13 4-7 4 7" />
+        <path d="M9.1 11h5.7" />
+      </symbol>
+    </svg>
+
+    <header class="app-head">
+      <span class="logo" id="logo">Vaper</span>
+      <button class="back-btn hidden" id="back-btn" type="button">
+        <svg class="ic" aria-hidden="true"><use href="#i-back"></use></svg
+        >Settings
+      </button>
       <div class="menu-wrap">
         <button
-          class="menu-btn"
+          class="icon-btn"
           id="menu-btn"
+          type="button"
           aria-label="Menu"
           aria-haspopup="menu"
           aria-expanded="false"
         >
-          <span></span>
-          <span></span>
-          <span></span>
+          <svg class="ic" aria-hidden="true"><use href="#i-menu"></use></svg>
         </button>
         <div class="menu-dropdown hidden" id="menu-dropdown" role="menu">
-          <button class="menu-item" id="menu-permissions" role="menuitem">
+          <button
+            class="menu-item"
+            id="menu-permissions"
+            type="button"
+            role="menuitem"
+          >
             Permissions
           </button>
         </div>
@@ -58,24 +116,42 @@
     </header>
 
     <div class="view" id="main-view">
-      <main>
-        <div class="setting">
-          <label class="setting-label">Transcribe</label>
-          <div class="shortcut-group">
-            <span class="shortcut-key" id="shortcut">fn</span>
-            <button class="change-btn" id="change-hotkey">Change</button>
-            <button class="change-btn hidden" id="reset-fn">fn</button>
-          </div>
+      <section class="hero" aria-label="Push to talk">
+        <div class="orb-wrap">
+          <canvas
+            class="orb"
+            id="hero-orb"
+            width="132"
+            height="132"
+            aria-hidden="true"
+          ></canvas>
         </div>
-        <div class="setting">
-          <label class="setting-label">Microphone</label>
-          <select class="mic-select" id="mic-select">
+        <p class="hold" aria-live="polite">
+          <span id="hold-status">Hold to talk</span
+          ><kbd class="shortcut-key" id="shortcut">fn</kbd>
+        </p>
+        <div class="hero-actions">
+          <button class="link-btn" id="change-hotkey" type="button">
+            Change shortcut
+          </button>
+          <button class="link-btn hidden" id="reset-fn" type="button">
+            Use fn
+          </button>
+        </div>
+      </section>
+
+      <section class="deck" aria-label="Settings">
+        <div class="row">
+          <svg class="ic" aria-hidden="true"><use href="#i-mic"></use></svg>
+          <label class="row-label" for="mic-select">Microphone</label>
+          <select class="row-select" id="mic-select">
             <option value="default">Default</option>
           </select>
         </div>
-        <div class="setting">
-          <label class="setting-label">Language</label>
-          <select class="mic-select" id="lang-select">
+        <div class="row">
+          <svg class="ic" aria-hidden="true"><use href="#i-globe"></use></svg>
+          <label class="row-label" for="lang-select">Language</label>
+          <select class="row-select" id="lang-select">
             <option value="auto">Auto-detect</option>
             <option value="en">English</option>
             <option value="fr">French</option>
@@ -94,105 +170,131 @@
             <option value="uk">Ukrainian</option>
           </select>
         </div>
-        <div class="setting">
-          <label class="setting-label">Dictionary</label>
-          <div class="setting-right">
-            <span class="dictionary-count hidden" id="dictionary-hint"
-              >Words: Whisper only</span
-            >
-            <span class="dictionary-count" id="dictionary-count"></span>
-            <button class="setting-btn" id="dictionary-btn">Edit</button>
-          </div>
-        </div>
-      </main>
-      <footer>
-        <div class="footer-left">
-          <select class="mic-select model-select" id="model-select"></select>
-          <span class="model-info hidden" id="model-info">
-            <span class="model-info-icon" id="model-info-icon"
-              >i
-              <span class="model-tooltip" id="model-tooltip">
-                <span class="tooltip-row" id="tooltip-whisper"></span>
-              </span>
-            </span>
-          </span>
+        <div class="row">
+          <svg class="ic" aria-hidden="true"><use href="#i-cpu"></use></svg>
+          <label class="row-label" for="model-select">Engine</label>
+          <span class="row-status"
+            ><span id="model-status"></span
+            ><span class="bar hidden" id="download-bar"></span
+          ></span>
+          <select class="row-select fit" id="model-select"></select>
           <button
-            class="download-btn hidden"
+            class="icon-btn sm hidden"
             id="download-btn"
             type="button"
             aria-label="Download model"
             title="Download model"
           >
-            <svg
-              aria-hidden="true"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path d="M12 3v12" />
-              <path d="m7 10 5 5 5-5" />
-              <path d="M5 21h14" />
+            <svg class="ic" aria-hidden="true">
+              <use href="#i-download"></use>
             </svg>
           </button>
-          <span class="download-progress hidden" id="download-progress"></span>
-          <button class="restart-btn hidden" id="restart-btn">
-            Restart to apply
+        </div>
+        <div class="row">
+          <svg class="ic" aria-hidden="true"><use href="#i-book"></use></svg>
+          <span class="row-label" id="dictionary-label">Dictionary</span>
+          <button
+            class="row-btn"
+            id="dictionary-btn"
+            type="button"
+            aria-describedby="dictionary-label"
+          >
+            <span class="row-value"
+              ><span id="dictionary-count"></span
+              ><span class="row-sub" id="corrections-count"></span
+            ></span>
+            <svg class="ic chevron" aria-hidden="true">
+              <use href="#i-chevron"></use>
+            </svg>
           </button>
         </div>
-        <div class="footer-right">
-          <button class="update-btn" id="update-btn">Check for updates</button>
-        </div>
+      </section>
+
+      <footer class="app-foot">
+        <span class="version" id="version-badge"></span>
+        <button class="pill-btn primary hidden" id="restart-btn" type="button">
+          Restart to apply
+        </button>
+        <button class="pill-btn" id="update-btn" type="button">
+          Check for updates
+        </button>
       </footer>
     </div>
 
     <div class="view hidden" id="permissions-view">
-      <div class="permissions-list">
-        <div class="setting" id="mic-perm-setting">
-          <label class="setting-label">Microphone</label>
-          <span class="perm-message hidden" id="mic-perm-message"></span>
-          <span class="status-badge granted hidden" id="mic-perm-status"
+      <h2 class="view-title">Permissions</h2>
+      <div class="deck perm-deck">
+        <div class="perm" id="mic-perm-setting">
+          <div class="perm-copy">
+            <p class="perm-name">Microphone</p>
+            <p class="perm-why">Hears you while you hold the shortcut</p>
+            <p class="perm-message hidden" id="mic-perm-message"></p>
+          </div>
+          <span class="granted hidden" id="mic-perm-status"
+            ><svg class="ic" aria-hidden="true"><use href="#i-check"></use></svg
             >Granted</span
           >
-          <button class="setting-btn hidden" id="grant-mic-btn">Grant</button>
-        </div>
-        <div class="setting" id="accessibility-setting">
-          <label class="setting-label">Accessibility</label>
-          <span class="status-badge granted hidden" id="access-status"
-            >Granted</span
-          >
-          <button class="setting-btn hidden" id="grant-access-btn">
+          <button class="pill-btn hidden" id="grant-mic-btn" type="button">
             Grant
           </button>
         </div>
-        <div class="setting" id="system-events-setting">
-          <label class="setting-label">System Events</label>
-          <span class="status-badge granted hidden" id="se-status"
+        <div class="perm" id="accessibility-setting">
+          <div class="perm-copy">
+            <p class="perm-name">Accessibility</p>
+            <p class="perm-why">Notices the shortcut in any app</p>
+          </div>
+          <span class="granted hidden" id="access-status"
+            ><svg class="ic" aria-hidden="true"><use href="#i-check"></use></svg
             >Granted</span
           >
-          <button class="setting-btn hidden" id="grant-se-btn">Grant</button>
+          <button class="pill-btn hidden" id="grant-access-btn" type="button">
+            Grant
+          </button>
+        </div>
+        <div class="perm" id="system-events-setting">
+          <div class="perm-copy">
+            <p class="perm-name">System Events</p>
+            <p class="perm-why">Pastes the transcript where you are typing</p>
+          </div>
+          <span class="granted hidden" id="se-status"
+            ><svg class="ic" aria-hidden="true"><use href="#i-check"></use></svg
+            >Granted</span
+          >
+          <button class="pill-btn hidden" id="grant-se-btn" type="button">
+            Grant
+          </button>
         </div>
       </div>
     </div>
 
-    <div class="dictionary-modal hidden" id="dictionary-modal">
-      <div class="dictionary-panel">
-        <div class="dictionary-header">
-          <span class="dictionary-title">Dictionary</span>
-          <button class="change-btn" id="dictionary-close">Done</button>
+    <div class="pop hidden" id="dictionary-modal">
+      <div
+        class="pop-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="dictionary-title"
+      >
+        <div class="pop-head">
+          <h2 class="pop-title" id="dictionary-title">Dictionary</h2>
+          <button
+            class="icon-btn"
+            id="dictionary-close"
+            type="button"
+            aria-label="Close dictionary"
+          >
+            <svg class="ic" aria-hidden="true"><use href="#i-x"></use></svg>
+          </button>
         </div>
         <div
-          class="dictionary-tabs"
+          class="seg"
+          id="dictionary-sections"
           role="tablist"
           aria-label="Dictionary sections"
         >
           <button
-            class="dictionary-tab"
+            class="seg-btn"
             id="dictionary-tab-words"
+            type="button"
             role="tab"
             aria-selected="true"
             aria-controls="dictionary-words-panel"
@@ -200,8 +302,9 @@
             Words
           </button>
           <button
-            class="dictionary-tab"
+            class="seg-btn"
             id="dictionary-tab-corrections"
+            type="button"
             role="tab"
             aria-selected="false"
             aria-controls="dictionary-corrections-panel"
@@ -211,57 +314,88 @@
           </button>
         </div>
         <div
-          class="dictionary-section"
+          class="pop-section"
           id="dictionary-words-panel"
           role="tabpanel"
           aria-labelledby="dictionary-tab-words"
         >
-          <p class="dictionary-note">Spelling hints for Whisper.</p>
-          <div class="dictionary-add">
+          <div class="field">
             <input
               type="text"
               id="dictionary-input"
-              placeholder="Add a word…"
+              placeholder="Add a name or term"
               aria-label="New word"
+              aria-describedby="dictionary-error dictionary-words-note"
+              autocomplete="off"
+              spellcheck="false"
             />
-            <button class="dictionary-add-btn" id="dictionary-add-btn">
-              Add
+            <button
+              class="add-btn"
+              id="dictionary-add-btn"
+              type="button"
+              aria-label="Add word"
+            >
+              <svg class="ic" aria-hidden="true">
+                <use href="#i-plus"></use>
+              </svg>
             </button>
           </div>
-          <div class="dictionary-list" id="dictionary-list"></div>
+          <p class="pop-error" id="dictionary-error" aria-live="polite"></p>
+          <ul class="chip-list" id="dictionary-list"></ul>
+          <p class="pop-foot" id="dictionary-words-note">
+            Helps Whisper spell them your way
+          </p>
         </div>
         <div
-          class="dictionary-section hidden"
+          class="pop-section hidden"
           id="dictionary-corrections-panel"
           role="tabpanel"
           aria-labelledby="dictionary-tab-corrections"
         >
-          <p class="dictionary-note" id="corrections-note">
-            Replace what any engine mishears before it's pasted.
-          </p>
-          <div class="dictionary-add">
+          <div class="field">
             <input
               type="text"
               id="correction-from"
-              placeholder="Heard as…"
+              placeholder="Heard as"
               aria-label="Heard as"
               maxlength="60"
+              autocomplete="off"
+              spellcheck="false"
             />
+            <svg class="ic field-arrow" aria-hidden="true">
+              <use href="#i-arrow"></use>
+            </svg>
             <input
               type="text"
               id="correction-to"
-              placeholder="Write as…"
+              placeholder="Write as"
               aria-label="Write as"
+              aria-describedby="corrections-note"
               maxlength="100"
+              autocomplete="off"
+              spellcheck="false"
             />
-            <button class="dictionary-add-btn" id="correction-add-btn">
-              Add
+            <button
+              class="add-btn"
+              id="correction-add-btn"
+              type="button"
+              aria-label="Add correction"
+            >
+              <svg class="ic" aria-hidden="true">
+                <use href="#i-plus"></use>
+              </svg>
             </button>
           </div>
-          <div class="dictionary-list" id="correction-list"></div>
+          <ul class="rule-list" id="correction-list"></ul>
+          <p class="pop-foot">
+            <span id="corrections-note">Works with every engine</span
+            ><span id="corrections-builtin"></span>
+          </p>
         </div>
       </div>
     </div>
+    <script src="orb.js"></script>
+    <script src="hero.js"></script>
     <script src="renderer.js"></script>
   </body>
 </html>

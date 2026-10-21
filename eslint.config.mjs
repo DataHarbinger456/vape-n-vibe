@@ -13,7 +13,7 @@ export default [
     },
   },
   {
-    files: ["src/renderer/**/*.js"],
+    files: ["src/renderer/**/*.js", "design/**/*.js"],
     languageOptions: {
       globals: {
         ...globals.browser,

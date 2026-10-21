@@ -1,0 +1,701 @@
+/* 05 Mercury: monochrome, object-first. Red only means "on air". */
+.v-mercury {
+  --bg: #0b0b0c;
+  --surface: #141416;
+  --raised: #1b1b1e;
+  --hover: #232327;
+  --line: #29292d;
+  --line-strong: #3a3a40;
+  --text: #f2f2f3;
+  --soft: #c7c7cc;
+  --muted: #98989f;
+  --rec: #ff453a;
+  --rec-ink: #1a0503;
+  --focus: #ffffff;
+  --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(70% 40% at 50% 26%, #1b1b1f, transparent 70%), var(--bg);
+  color: var(--text);
+  font:
+    400 13px/1.4 "Geist",
+    "Segoe UI",
+    sans-serif;
+}
+
+.v-mercury :focus-visible {
+  outline-color: var(--focus);
+}
+
+.m-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 52px;
+  padding: 0 12px 0 80px;
+  flex: none;
+}
+
+.m-logo {
+  font-family: "Slackey", cursive;
+  font-size: 18px;
+  letter-spacing: -0.6px;
+  line-height: 1.1;
+}
+
+.m-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  margin-left: -8px;
+  padding: 4px 10px 4px 4px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font-weight: 500;
+  line-height: 1.25;
+  cursor: pointer;
+}
+
+.m-back:hover,
+.m-icon-btn:hover {
+  background: var(--raised);
+}
+
+.m-icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--soft);
+  cursor: pointer;
+  transition:
+    background-color 140ms var(--ease),
+    color 140ms var(--ease);
+}
+
+.m-icon-btn:active,
+.m-back:active {
+  background: var(--hover);
+}
+
+.m-icon-btn.sm {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  background: var(--raised);
+  color: var(--text);
+}
+
+.m-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 40;
+  min-width: 168px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--raised);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.55);
+}
+
+.m-menu button {
+  display: block;
+  width: 100%;
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  line-height: 1.25;
+  text-align: left;
+  cursor: pointer;
+}
+
+.m-menu button:hover {
+  background: var(--hover);
+}
+
+.m-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.m-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 16px 12px;
+}
+
+.m-orb-wrap {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 132px;
+  height: 132px;
+}
+
+/* Floor glow under the droplet: neutral at rest, red on air. */
+.m-orb-wrap::before {
+  position: absolute;
+  right: 22px;
+  bottom: 8px;
+  left: 22px;
+  height: 24px;
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+  content: "";
+  transition: background-color 200ms linear;
+}
+
+.v-mercury[data-state="recording"] .m-orb-wrap::before {
+  background: radial-gradient(
+    closest-side,
+    rgba(255, 69, 58, 0.45),
+    transparent
+  );
+}
+
+.m-orb {
+  position: relative;
+}
+
+.m-hold {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 2px;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+.v-mercury[data-state="recording"] .m-hold {
+  color: #ff8a82;
+}
+
+.m-key {
+  min-width: 34px;
+  padding: 2px 9px;
+  border: 1px solid var(--line-strong);
+  border-radius: 7px;
+  background: linear-gradient(180deg, #232327, #18181b);
+  box-shadow:
+    0 2px 0 #050505,
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  font:
+    500 13px/1.3 "Geist Mono",
+    monospace;
+  text-align: center;
+  white-space: nowrap;
+  transition:
+    transform 90ms var(--ease),
+    box-shadow 160ms var(--ease),
+    border-color 160ms var(--ease);
+}
+
+.v-mercury[data-state="recording"] .m-key {
+  border-color: var(--rec);
+  box-shadow: 0 0 0 #050505;
+  transform: translateY(2px);
+}
+
+.v-mercury[data-state="listening"] .m-key {
+  border-color: var(--text);
+}
+
+.m-hero-actions {
+  display: flex;
+  gap: 16px;
+  margin-top: 4px;
+}
+
+.m-link {
+  min-height: 24px;
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.3;
+  cursor: pointer;
+  transition: color 140ms var(--ease);
+}
+
+.m-link:hover {
+  color: var(--text);
+}
+
+.m-link:active {
+  color: var(--soft);
+}
+
+.m-tiles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 0 16px;
+}
+
+.m-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  min-height: 76px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  transition: border-color 140ms var(--ease);
+}
+
+.m-tile:hover {
+  border-color: var(--line-strong);
+}
+
+/* Keyboard focus lands on the select; ring the whole tile instead of the bare control. */
+.m-tile:has(.m-select:focus-visible:not(.pointer-focus)),
+.m-tile:has(.m-tile-btn:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.m-tile .m-select:focus-visible,
+.m-tile .m-tile-btn:focus-visible {
+  outline: none;
+}
+
+.m-tile-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.m-tile-label .ic {
+  width: 14px;
+  height: 14px;
+}
+
+.m-tile-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.m-select {
+  width: 100%;
+  min-width: 0;
+  min-height: 28px;
+  padding: 3px 18px 3px 0;
+  border: 0;
+  appearance: none;
+  background: transparent
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%23c7c7cc' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/></svg>")
+    no-repeat right 2px center;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.m-tile-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 28px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.3;
+  cursor: pointer;
+}
+
+.m-tile-btn::after {
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  content: "";
+}
+
+.m-tile-edit {
+  color: var(--muted);
+  font-size: 12.5px;
+  transition: color 140ms var(--ease);
+}
+
+.m-tile-btn:hover .m-tile-edit {
+  color: var(--text);
+}
+
+.m-tile:has(.m-tile-btn:active) {
+  background: var(--raised);
+}
+
+.m-tile-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.3;
+}
+
+.m-bar {
+  color: var(--text);
+}
+
+.m-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+  padding: 12px 16px;
+}
+
+.m-ver {
+  margin-right: auto;
+  color: var(--muted);
+  font:
+    400 11.5px/1.3 "Geist Mono",
+    monospace;
+}
+
+.m-btn {
+  min-height: 28px;
+  padding: 4px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.25;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 140ms var(--ease),
+    border-color 140ms var(--ease);
+}
+
+.m-btn:hover {
+  border-color: var(--soft);
+  background: var(--raised);
+}
+
+.m-btn:active {
+  background: var(--hover);
+}
+
+.m-btn:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.m-btn.is-primary {
+  border-color: var(--text);
+  background: var(--text);
+  color: var(--bg);
+}
+
+/* Permissions */
+.m-perms {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 16px;
+}
+
+.m-title {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+.m-perm {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.m-perm > div {
+  margin-right: auto;
+}
+
+.m-perm-name {
+  font-weight: 600;
+}
+
+.m-perm-why {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.m-granted {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--soft);
+  font-size: 12px;
+}
+
+.m-granted .ic {
+  width: 14px;
+  height: 14px;
+}
+
+/* Dictionary bottom sheet */
+.m-sheet {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: flex-end;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.m-sheet-panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-height: 78%;
+  border: 1px solid var(--line);
+  border-bottom: 0;
+  border-radius: 20px 20px 0 0;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 -20px 50px rgba(0, 0, 0, 0.5);
+  animation: m-sheet 320ms var(--ease);
+}
+
+@keyframes m-sheet {
+  from {
+    transform: translateY(40px);
+    opacity: 0;
+  }
+}
+
+.m-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 8px;
+}
+
+.m-dict-add {
+  display: flex;
+  gap: 8px;
+  padding: 0 16px;
+}
+
+.m-dict-add input {
+  flex: 1;
+  min-width: 0;
+  min-height: 32px;
+  padding: 5px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.m-dict-add input::placeholder {
+  color: var(--muted);
+}
+
+.v-mercury .dict-error {
+  padding: 6px 16px 0;
+  color: #ff8a82;
+}
+
+.m-dict-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  overflow-y: auto;
+  padding: 12px 16px 16px;
+  list-style: none;
+}
+
+.v-mercury .dict-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 2px 2px 12px;
+  border-radius: 999px;
+  background: var(--raised);
+}
+
+.v-mercury .dict-del {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.v-mercury .dict-del .ic {
+  width: 14px;
+  height: 14px;
+}
+
+.v-mercury .dict-del:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.v-mercury .dict-empty {
+  color: var(--muted);
+}
+
+/* Overlay pill. Width animates on purpose: the pill keeps its border while it morphs. */
+.ov-mercury {
+  filter: drop-shadow(0 14px 22px rgba(0, 0, 0, 0.45));
+}
+
+.ov-pill {
+  position: absolute;
+  top: 52px;
+  left: 50%;
+  width: 48px;
+  height: 48px;
+  overflow: hidden;
+  border-radius: 24px;
+  background: #050506;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  opacity: 0;
+  transform: translateX(-50%) scale(0.4);
+  transition:
+    width 520ms cubic-bezier(0.32, 0.72, 0, 1),
+    transform 420ms cubic-bezier(0.32, 0.72, 0, 1),
+    opacity 200ms linear;
+}
+
+.ov-mercury[data-mode="recording"] .ov-pill {
+  width: 300px;
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}
+
+.ov-mercury[data-mode="processing"] .ov-pill {
+  width: 48px;
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}
+
+.ov-pill-orb {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.ov-pill-text {
+  position: absolute;
+  top: 0;
+  right: 84px;
+  bottom: 0;
+  left: 52px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  color: #f2f2f3;
+  direction: rtl;
+  font:
+    450 13px/1.3 "Geist",
+    sans-serif;
+  mask-image: linear-gradient(90deg, transparent, #000 28px);
+  white-space: nowrap;
+}
+
+.ov-pill-text.is-empty {
+  direction: ltr;
+  mask-image: none;
+}
+
+.ov-pill-text.is-empty::before {
+  color: #98989f;
+  content: "Listening";
+  direction: ltr;
+}
+
+.ov-pill-time {
+  position: absolute;
+  top: 0;
+  right: 16px;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #c7c7cc;
+  font:
+    500 12px/1.3 "Geist Mono",
+    monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.ov-pill-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ff453a;
+  box-shadow: 0 0 8px #ff453a;
+}
+
+.ov-mercury[data-mode="processing"] .ov-pill-text,
+.ov-mercury[data-mode="processing"] .ov-pill-time {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .m-sheet-panel {
+    animation: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .m-tile,
+  .m-btn,
+  .m-key {
+    border-color: ButtonText;
+  }
+}

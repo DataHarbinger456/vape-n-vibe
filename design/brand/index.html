@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Vaper brand art</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Geist:wght@400..600&family=Geist+Mono:wght@500&family=Slackey&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        margin: 0;
+        padding: 32px;
+        background: #1a1a1d;
+        color: #c7c7cc;
+        font:
+          13px/1.4 Geist,
+          sans-serif;
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        gap: 32px;
+        margin-bottom: 32px;
+      }
+      figure {
+        margin: 0;
+      }
+      figcaption {
+        margin-top: 8px;
+      }
+      .light {
+        padding: 8px;
+        background: #f2f2f3;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="row">
+      <figure>
+        <canvas id="icon" style="width: 256px; height: 256px"></canvas>
+        <figcaption>App icon</figcaption>
+      </figure>
+      <figure>
+        <canvas id="icon64" style="width: 64px; height: 64px"></canvas>
+        <figcaption>64</figcaption>
+      </figure>
+      <figure>
+        <canvas id="icon32" style="width: 32px; height: 32px"></canvas>
+        <figcaption>32</figcaption>
+      </figure>
+      <figure>
+        <div class="light">
+          <canvas id="tray" style="width: 22px; height: 22px"></canvas>
+        </div>
+        <figcaption>Menu bar</figcaption>
+      </figure>
+    </div>
+    <figure>
+      <canvas id="dmg" style="width: 660px; height: 420px"></canvas>
+      <figcaption>DMG background</figcaption>
+    </figure>
+    <script src="metal.js"></script>
+    <script src="brand.js"></script>
+    <script>
+      "use strict";
+      const B = window.VaperBrand;
+      const exportCanvas = (fn, ...args) => {
+        const c = document.createElement("canvas");
+        fn(c, ...args);
+        return c.toDataURL("image/png");
+      };
+      /** Called by export.cjs: every asset as a PNG data URL. */
+      window.exportAll = async () => {
+        await document.fonts.ready;
+        await Promise.all([
+          document.fonts.load("30px Slackey"),
+          document.fonts.load("450 14px Geist"),
+          document.fonts.load("500 12px 'Geist Mono'"),
+        ]);
+        const out = { icon: exportCanvas(B.renderIcon, 1024) };
+        for (const s of [16, 32, 64, 128, 256, 512]) {
+          out[`icon-${s}`] = exportCanvas(B.renderIcon, s);
+        }
+        out.tray = exportCanvas(B.renderTray, 22);
+        out.tray2x = exportCanvas(B.renderTray, 44);
+        out.dmg = exportCanvas(B.renderDmg, 1);
+        out.dmg2x = exportCanvas(B.renderDmg, 2);
+        out.layout = B.DMG;
+        return out;
+      };
+      document.fonts.ready.then(async () => {
+        await document.fonts.load("30px Slackey");
+        B.renderIcon(document.getElementById("icon"), 512);
+        B.renderIcon(document.getElementById("icon64"), 128);
+        B.renderIcon(document.getElementById("icon32"), 64);
+        B.renderTray(document.getElementById("tray"), 44);
+        B.renderDmg(document.getElementById("dmg"), 2);
+      });
+    </script>
+  </body>
+</html>

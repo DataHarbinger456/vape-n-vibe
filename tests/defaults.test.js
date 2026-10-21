@@ -42,6 +42,13 @@ describe("defaults", () => {
     expect(defaults.window.height).toBeGreaterThan(0);
   });
 
+  it("is tall enough for the full settings layout", () => {
+    // Orb hero + four tiles + footer need 470px of content height;
+    // the old 340px window clipped the bottom row of tiles.
+    expect(defaults.window.width).toBeGreaterThanOrEqual(400);
+    expect(defaults.window.height).toBeGreaterThanOrEqual(470);
+  });
+
   it('has hotkey "fn" on darwin', () => {
     if (process.platform === "darwin") {
       expect(defaults.hotkey).toBe("fn");

@@ -1,0 +1,642 @@
+/* 02 Console: warm analog channel strip. Uppercase engraving is the hardware register here. */
+.v-console {
+  --panel: #1c1813;
+  --raised: #2a241c;
+  --slot: #0e0c09;
+  --line: #3a3127;
+  --engrave: #e2d5b8;
+  --engrave-muted: #a8987a;
+  --amber: #ffb547;
+  --amber-ink: #1d1405;
+  --lamp: #ff5a4a;
+  --cream: #efe4cb;
+  --cream-ink: #1c1712;
+  --focus: #ffd08a;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  display: flex;
+  flex-direction: column;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 240, 210, 0.014) 0 1px,
+      transparent 1px 3px
+    ),
+    linear-gradient(180deg, #241f18, #15120e);
+  color: var(--engrave);
+  font:
+    400 13px/1.4 "Archivo",
+    "Segoe UI",
+    sans-serif;
+}
+
+.v-console :focus-visible {
+  outline-color: var(--focus);
+}
+
+.c-screw {
+  position: absolute;
+  bottom: 9px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background:
+    linear-gradient(35deg, transparent 44%, #0f0c09 44% 56%, transparent 56%),
+    radial-gradient(circle at 35% 30%, #5a4f41, #2a241c 70%);
+  box-shadow: 0 1px 0 rgba(255, 240, 210, 0.08);
+}
+
+.c-screw-bl {
+  left: 9px;
+}
+
+.c-screw-br {
+  right: 9px;
+}
+
+.c-engrave {
+  color: var(--engrave-muted);
+  font-size: 10px;
+  font-stretch: 125%;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  line-height: 1.2;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
+  text-transform: uppercase;
+}
+
+.c-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 52px;
+  padding: 0 12px 0 80px;
+  flex: none;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.5);
+  box-shadow: 0 1px 0 rgba(255, 240, 210, 0.05);
+}
+
+.c-brand {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.c-logo {
+  color: var(--cream);
+  font-family: "Slackey", cursive;
+  font-size: 19px;
+  letter-spacing: -0.6px;
+  line-height: 1.1;
+}
+
+.c-plate {
+  padding: 2px 6px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  color: var(--engrave-muted);
+  font-size: 10px;
+  font-stretch: 125%;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+
+.c-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  margin-left: -8px;
+  padding: 4px 8px 4px 4px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--engrave);
+  font-weight: 600;
+  line-height: 1.25;
+  cursor: pointer;
+}
+
+.c-back:hover,
+.c-icon-btn:hover {
+  background: rgba(255, 240, 210, 0.06);
+}
+
+.c-icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--engrave);
+  cursor: pointer;
+  transition: background-color 120ms var(--ease);
+}
+
+.c-icon-btn:active,
+.c-back:active {
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.c-inline .c-icon-btn {
+  flex: none;
+  border-color: #000;
+  background: linear-gradient(180deg, #3a3228, #26201a);
+  box-shadow: inset 0 1px 0 rgba(255, 240, 210, 0.1);
+}
+
+.c-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 40;
+  min-width: 168px;
+  padding: 4px;
+  border: 1px solid #000;
+  border-radius: 8px;
+  background: var(--raised);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.55);
+}
+
+.c-menu button {
+  display: block;
+  width: 100%;
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--engrave);
+  line-height: 1.25;
+  text-align: left;
+  cursor: pointer;
+}
+
+.c-menu button:hover {
+  background: rgba(255, 240, 210, 0.07);
+}
+
+.c-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.c-deck {
+  display: grid;
+  grid-template-columns: 132px 1fr;
+  gap: 16px;
+  padding: 14px 16px 10px;
+}
+
+.c-talk,
+.c-meter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.c-meter canvas {
+  border-radius: 8px;
+  box-shadow:
+    0 0 0 4px #0f0c09,
+    0 0 0 5px rgba(255, 240, 210, 0.07);
+}
+
+/* The backlit talk key. Display only: the shortcut is global. */
+.c-talk-key {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 96px;
+  height: 80px;
+  border: 1px solid #000;
+  border-radius: 14px;
+  background: radial-gradient(120% 90% at 50% 0%, #3a3228, #201b15);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 240, 210, 0.12),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.4),
+    0 3px 0 #0a0806,
+    0 0 0 4px #120f0b;
+  transition:
+    box-shadow 160ms var(--ease),
+    background-color 160ms var(--ease),
+    transform 90ms var(--ease);
+}
+
+.c-key {
+  color: var(--cream);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.c-lamp {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #5c3f1a;
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.5);
+}
+
+.v-console[data-state="idle"] .c-lamp {
+  background: #b07a2a;
+}
+
+.v-console[data-state="recording"] .c-talk-key {
+  background: radial-gradient(120% 100% at 50% 40%, #6a2a20, #2a1612);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 200, 190, 0.18),
+    0 1px 0 #0a0806,
+    0 0 0 4px #120f0b,
+    0 0 30px rgba(255, 90, 74, 0.35);
+  transform: translateY(2px);
+}
+
+.v-console[data-state="recording"] .c-key {
+  color: #ffe1dc;
+}
+
+.v-console[data-state="recording"] .c-lamp {
+  background: var(--lamp);
+  box-shadow: 0 0 10px var(--lamp);
+}
+
+.v-console[data-state="processing"] .c-lamp,
+.v-console[data-state="listening"] .c-lamp {
+  background: var(--amber);
+  box-shadow: 0 0 10px var(--amber);
+  animation: c-blink 700ms steps(2, jump-none) infinite;
+}
+
+@keyframes c-blink {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.c-talk-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.c-btn {
+  min-height: 28px;
+  padding: 4px 10px;
+  border: 1px solid #000;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #3a3228, #26201a);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 240, 210, 0.1),
+    0 1px 0 rgba(0, 0, 0, 0.6);
+  color: var(--engrave);
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    color 120ms var(--ease),
+    box-shadow 120ms var(--ease);
+}
+
+.c-btn:hover {
+  color: #fff3dc;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 240, 210, 0.16),
+    0 0 0 1px rgba(255, 181, 71, 0.45);
+}
+
+.c-btn:active {
+  background: linear-gradient(180deg, #26201a, #2e271f);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.c-btn:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.c-btn.is-primary {
+  border-color: #7a4e10;
+  background: linear-gradient(180deg, #ffc76d, var(--amber));
+  color: var(--amber-ink);
+}
+
+.c-channels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 16px;
+  padding: 4px 16px 12px;
+}
+
+.c-ch {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.c-inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+}
+
+.c-dict-line {
+  justify-content: space-between;
+}
+
+.c-count {
+  overflow: hidden;
+  color: var(--engrave);
+  font-size: 12.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.c-hint {
+  color: #ffc4a8;
+}
+
+.c-select {
+  width: 100%;
+  min-width: 0;
+  min-height: 32px;
+  padding: 6px 28px 6px 10px;
+  border: 1px solid #000;
+  border-radius: 6px;
+  appearance: none;
+  background: var(--slot)
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%23ffb547' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/></svg>")
+    no-repeat right 10px center;
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.7),
+    0 1px 0 rgba(255, 240, 210, 0.07);
+  color: var(--engrave);
+  font-size: 12.5px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition: box-shadow 120ms var(--ease);
+}
+
+.c-select:hover {
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.7),
+    0 0 0 1px rgba(255, 181, 71, 0.35);
+}
+
+.c-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+  padding: 10px 24px 14px;
+}
+
+.c-lcd {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 30px;
+  overflow: hidden;
+  padding: 4px 10px;
+  border: 1px solid #000;
+  border-radius: 5px;
+  background: linear-gradient(180deg, #1a1406, #221a08);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.8);
+  color: var(--amber);
+  font-size: 11.5px;
+  font-stretch: 75%;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  line-height: 1.25;
+  text-shadow: 0 0 8px rgba(255, 181, 71, 0.45);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.c-lcd-sep {
+  opacity: 0.5;
+}
+
+.c-lcd [data-role="model-status"] {
+  margin-left: auto;
+  opacity: 0.8;
+}
+
+.c-bar {
+  color: var(--amber);
+}
+
+/* Permissions */
+.c-perms {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px;
+}
+
+.c-title {
+  color: var(--cream);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.c-perm {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 60px;
+  padding: 8px 12px;
+  border: 1px solid #000;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.22);
+  box-shadow: inset 0 1px 0 rgba(255, 240, 210, 0.04);
+}
+
+.c-perm > div {
+  margin-right: auto;
+}
+
+.c-perm-lamp {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: #5c3f1a;
+}
+
+.c-perm[data-granted="true"] .c-perm-lamp {
+  background: #8fe36b;
+  box-shadow: 0 0 8px rgba(143, 227, 107, 0.7);
+}
+
+.c-perm-name {
+  color: var(--engrave);
+  font-weight: 600;
+}
+
+.c-perm-why {
+  color: var(--engrave-muted);
+  font-size: 12px;
+}
+
+.c-granted {
+  color: var(--engrave-muted);
+  font-size: 12px;
+}
+
+/* Dictionary */
+.c-dict {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(8, 6, 4, 0.76);
+}
+
+.c-dict-panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  border: 1px solid #000;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #2a241c, #1c1813);
+  color: var(--engrave);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 240, 210, 0.08),
+    0 20px 56px rgba(0, 0, 0, 0.6);
+}
+
+.c-dict-head,
+.c-dict-add {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.5);
+}
+
+.c-dict-add input {
+  flex: 1;
+  min-width: 0;
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 1px solid #000;
+  border-radius: 6px;
+  background: var(--slot);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.7);
+  color: var(--engrave);
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.c-dict-add input::placeholder {
+  color: var(--engrave-muted);
+}
+
+.v-console .dict-error {
+  padding: 6px 12px 0;
+  color: #ffc4a8;
+}
+
+.c-dict-list {
+  overflow-y: auto;
+  padding: 4px 0;
+  list-style: none;
+}
+
+.v-console .dict-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 36px;
+  padding: 2px 6px 2px 12px;
+}
+
+.v-console .dict-row:hover {
+  background: rgba(255, 240, 210, 0.04);
+}
+
+.v-console .dict-del {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--engrave-muted);
+  cursor: pointer;
+}
+
+.v-console .dict-del:hover {
+  background: #3a3228;
+  color: #ffc4a8;
+}
+
+.v-console .dict-empty {
+  padding: 12px;
+  color: var(--engrave-muted);
+}
+
+/* Overlay label tape */
+.ov-console-text {
+  position: absolute;
+  top: 118px;
+  left: 50%;
+  max-width: 248px;
+  min-height: 22px;
+  overflow: hidden;
+  padding: 3px 10px;
+  border-radius: 3px;
+  background: var(--cream, #efe4cb);
+  box-shadow:
+    0 6px 16px rgba(0, 0, 0, 0.35),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.12);
+  color: #1c1712;
+  direction: rtl;
+  font:
+    600 12px/1.3 "Archivo",
+    sans-serif;
+  font-stretch: 90%;
+  opacity: var(--alpha, 0);
+  text-align: left;
+  text-overflow: ellipsis;
+  transform: translateX(-50%) rotate(-0.6deg);
+  white-space: nowrap;
+}
+
+.ov-console-text.is-empty {
+  visibility: hidden;
+}
+
+@media (forced-colors: active) {
+  .c-select,
+  .c-btn,
+  .c-talk-key {
+    border-color: ButtonText;
+  }
+}

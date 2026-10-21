@@ -1,0 +1,572 @@
+/* 04 Transcript: light editorial. Serif for the sentence, a neutral grotesk for utility. */
+.v-transcript {
+  color-scheme: light;
+  --paper: #f4efe4;
+  --paper-2: #ebe4d4;
+  --ink: #1f1b16;
+  --soft: #3f3830;
+  --muted: #6b6256;
+  --rule: #d4c9b4;
+  --verm: #b8321a;
+  --verm-ink: #fff8f0;
+  --focus: #b8321a;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(
+      90% 60% at 100% 0%,
+      rgba(184, 50, 26, 0.05),
+      transparent 60%
+    ),
+    var(--paper);
+  color: var(--ink);
+  font:
+    400 13px/1.4 "Instrument Sans",
+    "Segoe UI",
+    sans-serif;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.5),
+    0 30px 70px rgba(0, 0, 0, 0.5);
+}
+
+.v-transcript :focus-visible {
+  outline-color: var(--focus);
+}
+
+.t-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 52px;
+  padding: 0 12px 0 80px;
+  flex: none;
+}
+
+.t-brand {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.t-logo {
+  position: relative;
+  font-family: "Slackey", cursive;
+  font-size: 19px;
+  letter-spacing: -0.6px;
+  line-height: 1.1;
+}
+
+.t-logo::after {
+  position: absolute;
+  right: 0;
+  bottom: -4px;
+  left: 0;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--verm);
+  content: "";
+}
+
+.t-ver {
+  color: var(--muted);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.t-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  margin-left: -8px;
+  padding: 4px 8px 4px 4px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink);
+  font-weight: 600;
+  line-height: 1.25;
+  cursor: pointer;
+}
+
+.t-back:hover,
+.t-icon-btn:hover {
+  background: var(--paper-2);
+}
+
+.t-icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  transition: background-color 120ms var(--ease);
+}
+
+.t-icon-btn:active,
+.t-back:active {
+  background: var(--rule);
+}
+
+.t-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 40;
+  min-width: 168px;
+  padding: 4px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: #fbf8f1;
+  box-shadow: 0 16px 36px rgba(40, 30, 20, 0.18);
+}
+
+.t-menu button {
+  display: block;
+  width: 100%;
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink);
+  line-height: 1.25;
+  text-align: left;
+  cursor: pointer;
+}
+
+.t-menu button:hover {
+  background: var(--paper-2);
+}
+
+.t-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* The sentence is the form. */
+.t-sentence {
+  margin: 4px 24px 0;
+  font:
+    400 21px/1.72 "Newsreader",
+    Georgia,
+    serif;
+  font-optical-sizing: auto;
+  letter-spacing: -0.01em;
+}
+
+.t-field {
+  white-space: nowrap;
+}
+
+.t-select {
+  max-width: 100%;
+  padding: 0 18px 0 1px;
+  border: 0;
+  border-bottom: 1.5px solid var(--rule);
+  border-radius: 0;
+  appearance: none;
+  background: transparent
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%23b8321a' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>")
+    no-repeat right 3px center;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 500;
+  line-height: 1.3;
+  cursor: pointer;
+  transition: border-color 120ms var(--ease);
+}
+
+.t-select:hover {
+  border-bottom-color: var(--verm);
+}
+
+.t-key {
+  display: inline-block;
+  padding: 1px 9px 2px;
+  border: 1px solid var(--ink);
+  border-radius: 6px;
+  background: #fbf8f1;
+  box-shadow: 0 2px 0 var(--ink);
+  color: var(--ink);
+  font:
+    600 15px/1.3 "Instrument Sans",
+    sans-serif;
+  vertical-align: 3px;
+  white-space: nowrap;
+  transition:
+    transform 90ms var(--ease),
+    box-shadow 90ms var(--ease),
+    background-color 160ms var(--ease),
+    color 160ms var(--ease);
+}
+
+.v-transcript[data-state="recording"] .t-key {
+  border-color: var(--verm);
+  background: var(--verm);
+  box-shadow: 0 0 0 var(--ink);
+  color: var(--verm-ink);
+  transform: translateY(2px);
+}
+
+.v-transcript[data-state="listening"] .t-key {
+  border-color: var(--verm);
+  box-shadow: 0 2px 0 var(--verm);
+  color: var(--verm);
+}
+
+.t-ink {
+  display: block;
+  margin: 6px 24px 0;
+}
+
+.t-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 16px;
+  margin: 6px 24px 0;
+}
+
+.t-link {
+  min-height: 24px;
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  color: var(--soft);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.3;
+  text-decoration: underline;
+  text-decoration-color: var(--rule);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 4px;
+  cursor: pointer;
+  transition:
+    color 120ms var(--ease),
+    text-decoration-color 120ms var(--ease);
+}
+
+.t-link:hover {
+  color: var(--ink);
+  text-decoration-color: var(--verm);
+}
+
+.t-link:active {
+  color: var(--verm);
+}
+
+.t-hint {
+  color: var(--verm);
+  font-size: 12px;
+}
+
+.t-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+  padding: 10px 16px 10px 24px;
+  border-top: 1px solid var(--rule);
+}
+
+.t-status {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.v-transcript[data-state="recording"] .t-status [data-role="status"] {
+  color: var(--verm);
+  font-weight: 600;
+}
+
+.t-bar {
+  color: var(--verm);
+}
+
+.t-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 4px 10px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: #fbf8f1;
+  color: var(--ink);
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    border-color 120ms var(--ease),
+    background-color 120ms var(--ease);
+}
+
+.t-btn .ic {
+  width: 14px;
+  height: 14px;
+}
+
+.t-btn:hover {
+  border-color: var(--ink);
+}
+
+.t-btn:active {
+  background: var(--paper-2);
+}
+
+.t-btn:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.t-btn.is-primary {
+  border-color: var(--verm);
+  background: var(--verm);
+  color: var(--verm-ink);
+}
+
+/* Permissions, read as prose */
+.t-perms {
+  padding: 4px 24px;
+}
+
+.t-title {
+  font:
+    500 20px/1.35 "Newsreader",
+    Georgia,
+    serif;
+}
+
+.t-perm-list {
+  margin-top: 8px;
+  list-style: none;
+  counter-reset: perm;
+}
+
+.t-perm-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 60px;
+  border-bottom: 1px solid var(--rule);
+  counter-increment: perm;
+}
+
+.t-perm-list li:last-child {
+  border-bottom: 0;
+}
+
+.t-perm-list li::before {
+  color: var(--verm);
+  font:
+    500 15px/1.3 "Newsreader",
+    serif;
+  content: counter(perm);
+}
+
+.t-perm-list p {
+  margin-right: auto;
+  font:
+    400 15px/1.4 "Newsreader",
+    Georgia,
+    serif;
+}
+
+.t-perm-name {
+  font-weight: 600;
+}
+
+.t-granted {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+.t-granted .ic {
+  width: 14px;
+  height: 14px;
+  color: var(--ink);
+}
+
+/* Dictionary sheet slides over from the margin. */
+.t-sheet {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  justify-content: flex-end;
+  background: rgba(31, 27, 22, 0.3);
+}
+
+.t-sheet-panel {
+  display: flex;
+  flex-direction: column;
+  width: 300px;
+  height: 100%;
+  padding-top: 44px;
+  border-left: 1px solid var(--rule);
+  background: #fbf8f1;
+  color: var(--ink);
+  box-shadow: -20px 0 40px rgba(40, 30, 20, 0.16);
+  animation: t-sheet 220ms var(--ease);
+}
+
+@keyframes t-sheet {
+  from {
+    transform: translateX(24px);
+    opacity: 0;
+  }
+}
+
+.t-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px 0 20px;
+}
+
+.t-sheet-note {
+  padding: 4px 20px 0;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.t-dict-add {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px 0 20px;
+}
+
+.t-dict-add input {
+  flex: 1;
+  min-width: 0;
+  min-height: 30px;
+  padding: 4px 2px;
+  border: 0;
+  border-bottom: 1.5px solid var(--ink);
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  font:
+    400 16px/1.3 "Newsreader",
+    serif;
+}
+
+.t-dict-add input::placeholder {
+  color: var(--muted);
+}
+
+.v-transcript .dict-error {
+  padding: 6px 20px 0;
+  color: var(--verm);
+}
+
+.t-dict-list {
+  flex: 1;
+  margin-top: 8px;
+  overflow-y: auto;
+  padding: 0 16px 12px 20px;
+  list-style: none;
+}
+
+.v-transcript .dict-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 38px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.v-transcript .dict-word {
+  font:
+    400 16px/1.3 "Newsreader",
+    serif;
+}
+
+.v-transcript .dict-del {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.v-transcript .dict-del:hover {
+  background: var(--paper-2);
+  color: var(--verm);
+}
+
+.v-transcript .dict-empty {
+  padding-top: 12px;
+  color: var(--muted);
+}
+
+/* Overlay caption sits inside the paper card drawn on canvas. */
+.ov-tr-text {
+  position: absolute;
+  top: 46px;
+  left: 50px;
+  width: 252px;
+  overflow: hidden;
+  color: #1f1b16;
+  direction: rtl;
+  font:
+    400 16px/1.5 "Newsreader",
+    Georgia,
+    serif;
+  opacity: var(--alpha, 0);
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ov-tr-text.is-empty {
+  direction: ltr;
+}
+
+.ov-tr-text.is-empty::before {
+  color: #6b6256;
+  content: "Listening\2026";
+  direction: ltr;
+}
+
+.ov-transcript[data-mode="processing"] .ov-tr-text.is-empty::before {
+  content: "Proofreading\2026";
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .t-sheet-panel {
+    animation: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .t-select,
+  .t-btn,
+  .t-key {
+    border-color: ButtonText;
+  }
+}

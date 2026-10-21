@@ -1,71 +1,199 @@
+/*
+ * Recording overlay: Mercury pill. Transparent, click-through window
+ * (340 × 150); the pill sits in the lower half above the dock.
+ */
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
+html,
 body {
-  display: flex;
+  height: 100%;
+}
+
+body {
   overflow: hidden;
-  flex-direction: column;
-  align-items: center;
-  padding-top: 68px;
   background: transparent;
+  filter: drop-shadow(0 14px 22px rgba(0, 0, 0, 0.45));
 }
 
-canvas {
-  display: block;
-  border: 1px solid rgba(143, 153, 143, 0.24);
-  border-radius: 10px;
-  background: rgba(11, 13, 12, 0.92);
-  box-shadow:
-    0 6px 22px rgba(0, 0, 0, 0.38),
-    inset 0 1px 0 rgba(244, 247, 242, 0.04);
-  opacity: 0;
-  transition: opacity 170ms cubic-bezier(0.2, 0, 0.38, 0.9);
-}
-
-canvas.visible {
-  opacity: 1;
-}
-
-#partial-text {
+/* Width animates on purpose: the pill keeps its edge while it morphs. */
+.pill {
+  position: absolute;
+  top: 70px;
+  left: 50%;
+  width: 48px;
+  height: 48px;
   overflow: hidden;
-  min-width: 36px;
-  max-width: 320px;
-  min-height: 20px;
-  margin-top: 6px;
-  padding: 3px 10px;
-  border: 1px solid rgba(183, 247, 116, 0.24);
-  border-radius: 6px;
-  background: rgba(11, 13, 12, 0.84);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28);
-  color: #f4f7f2;
-  direction: rtl;
-  font-family: "Segoe UI", sans-serif;
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 1.2;
-  text-align: left;
-  text-overflow: ellipsis;
+  border-radius: 24px;
+  background: #050506;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  opacity: 0;
+  transform: translateX(-50%) scale(0.4);
+  transition:
+    width 520ms cubic-bezier(0.32, 0.72, 0, 1),
+    transform 420ms cubic-bezier(0.32, 0.72, 0, 1),
+    opacity 200ms linear;
+}
+
+.pill[data-mode="recording"] {
+  width: 300px;
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}
+
+.pill[data-mode="processing"] {
+  width: 48px;
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}
+
+.pill-orb {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+/* Newest words stay visible; older ones fade out at the left edge. */
+.pill-text {
+  position: absolute;
+  top: 0;
+  right: 84px;
+  bottom: 0;
+  left: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  overflow: hidden;
+  color: #f2f2f3;
+  font:
+    450 13px/1.3 "Geist",
+    "Segoe UI",
+    sans-serif;
+  mask-image: linear-gradient(
+    90deg,
+    transparent,
+    #000 28px,
+    #000 calc(100% - 10px),
+    transparent
+  );
   white-space: nowrap;
 }
 
-#partial-text:empty {
-  visibility: hidden;
+.pill-text.rtl {
+  justify-content: flex-start;
+  mask-image: linear-gradient(
+    270deg,
+    transparent,
+    #000 28px,
+    #000 calc(100% - 10px),
+    transparent
+  );
+}
+
+.pill-track {
+  flex: none;
+  unicode-bidi: isolate;
+  will-change: transform;
+}
+
+/* Each new word fades up out of a soft blur. */
+.pill-track .w {
+  display: inline-block;
+  animation: word-in 520ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+@keyframes word-in {
+  from {
+    filter: blur(5px);
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  60% {
+    filter: blur(0);
+  }
+}
+
+.pill-text.is-empty {
+  justify-content: flex-start;
+  mask-image: none;
+}
+
+/* Placeholder breathes gently until the first words arrive. */
+.pill-text.is-empty::before {
+  animation: listening 1.8s ease-in-out infinite;
+}
+
+@keyframes listening {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.pill-text.is-empty::before {
+  color: #98989f;
+  content: "Listening";
+}
+
+.pill-time {
+  position: absolute;
+  top: 0;
+  right: 16px;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #c7c7cc;
+  font:
+    500 12px/1.3 "Geist Mono",
+    ui-monospace,
+    monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.pill-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ff453a;
+  box-shadow: 0 0 8px #ff453a;
+}
+
+.pill-text,
+.pill-time {
+  transition: opacity 160ms linear;
+}
+
+.pill[data-mode="processing"] .pill-text,
+.pill[data-mode="processing"] .pill-time,
+.pill[data-mode="idle"] .pill-text,
+.pill[data-mode="idle"] .pill-time {
+  opacity: 0;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  canvas {
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+  .pill,
+  .pill-text,
+  .pill-time {
     transition-duration: 0.01ms;
+  }
+
+  .pill-track .w,
+  .pill-text.is-empty::before {
+    animation: none;
   }
 }
 
 @media (forced-colors: active) {
-  #partial-text {
-    border-color: CanvasText;
+  .pill {
+    border: 1px solid CanvasText;
     background: Canvas;
+  }
+
+  .pill-text {
     color: CanvasText;
   }
 }

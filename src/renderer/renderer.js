@@ -7,29 +7,97 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   const shortcutEl = document.getElementById("shortcut");
   const changeBtn = document.getElementById("change-hotkey");
-  const modelInfo = document.getElementById("model-info");
-  const tooltipWhisper = document.getElementById("tooltip-whisper");
+  const holdStatus = document.getElementById("hold-status");
+  const modelStatus = document.getElementById("model-status");
   const downloadBtn = document.getElementById("download-btn");
-  const downloadProgress = document.getElementById("download-progress");
+  const downloadBar = document.getElementById("download-bar");
   const micSelect = document.getElementById("mic-select");
   const langSelect = document.getElementById("lang-select");
   const modelSelect = document.getElementById("model-select");
-  const dictionaryHint = document.getElementById("dictionary-hint");
+  // Words are a Whisper spelling prompt; other engines only use corrections.
+  const dictionarySections = document.getElementById("dictionary-sections");
   const updateBtn = document.getElementById("update-btn");
   const versionBadge = document.getElementById("version-badge");
   const restartBtn = document.getElementById("restart-btn");
 
-  document.querySelectorAll("select").forEach((select) => {
-    select.addEventListener("pointerdown", () =>
-      select.classList.add("pointer-focus"),
-    );
-    select.addEventListener("keydown", () =>
-      select.classList.remove("pointer-focus"),
-    );
-    select.addEventListener("blur", () =>
-      select.classList.remove("pointer-focus"),
-    );
+  // --- Input modality ---
+  // Focus rings show only for keyboard navigation. A click, tap or a native
+  // dropdown closing never leaves one behind (see styles.css).
+  const NAV_KEYS = new Set([
+    "ArrowUp",
+    "ArrowDown",
+    "ArrowLeft",
+    "ArrowRight",
+    "Home",
+    "End",
+    "PageUp",
+    "PageDown",
+    "Enter",
+    " ",
+  ]);
+  function setInputMode(mode) {
+    if (document.documentElement.dataset.input !== mode) {
+      document.documentElement.dataset.input = mode;
+    }
+  }
+  document.addEventListener("pointerdown", () => setInputMode("pointer"), {
+    capture: true,
   });
+  document.addEventListener(
+    "keydown",
+    (e) => {
+      // Editing keys in a text field are typing, not navigation.
+      const typing = e.target instanceof HTMLInputElement;
+      if (e.key === "Tab" || (!typing && NAV_KEYS.has(e.key))) {
+        setInputMode("keyboard");
+      }
+    },
+    { capture: true },
+  );
+
+  // --- Motion helpers ---
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+  /**
+   * Play an element's ".closing" (or other) animation, then run done().
+   * A timer backs up animationend so state never gets stuck.
+   */
+  function afterAnimation(el, className, done, fallbackMs = 260) {
+    if (reducedMotion.matches) {
+      done();
+      return;
+    }
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      el.removeEventListener("animationend", onEnd);
+      el.classList.remove(className);
+      done();
+    };
+    const onEnd = (e) => {
+      if (e.target === el) finish();
+    };
+    el.addEventListener("animationend", onEnd);
+    el.classList.add(className);
+    setTimeout(finish, fallbackMs);
+  }
+
+  /** Hide with the element's closing animation; no-op if already closed. */
+  function hideAnimated(el, onHidden) {
+    if (el.classList.contains("hidden") || el.classList.contains("closing")) {
+      return;
+    }
+    afterAnimation(el, "closing", () => {
+      el.classList.add("hidden");
+      if (onHidden) onHidden();
+    });
+  }
+
+  function showAnimated(el) {
+    el.classList.remove("closing");
+    el.classList.remove("hidden");
+  }
 
   // --- Hamburger menu / view states ---
   const menuBtn = document.getElementById("menu-btn");
@@ -40,9 +108,16 @@ window.addEventListener("DOMContentLoaded", async () => {
   const mainView = document.getElementById("main-view");
   const permissionsView = document.getElementById("permissions-view");
 
+  function isMenuOpen() {
+    return (
+      !menuDropdown.classList.contains("hidden") &&
+      !menuDropdown.classList.contains("closing")
+    );
+  }
+
   function closeMenuDropdown() {
-    menuDropdown.classList.add("hidden");
     menuBtn.setAttribute("aria-expanded", "false");
+    hideAnimated(menuDropdown);
   }
 
   function showMainView() {
@@ -63,10 +138,13 @@ window.addEventListener("DOMContentLoaded", async () => {
   }
 
   function toggleMenuDropdown() {
-    const isOpen = menuDropdown.classList.contains("hidden");
-    menuDropdown.classList.toggle("hidden", !isOpen);
-    menuBtn.setAttribute("aria-expanded", String(isOpen));
-    if (isOpen) menuPermissions.focus();
+    if (isMenuOpen()) {
+      closeMenuDropdown();
+      return;
+    }
+    showAnimated(menuDropdown);
+    menuBtn.setAttribute("aria-expanded", "true");
+    menuPermissions.focus();
   }
 
   menuBtn.addEventListener("click", (e) => {
@@ -79,13 +157,17 @@ window.addEventListener("DOMContentLoaded", async () => {
   backBtn.addEventListener("click", showMainView);
 
   document.addEventListener("click", (e) => {
-    if (!menuDropdown.contains(e.target) && e.target !== menuBtn) {
+    if (
+      isMenuOpen() &&
+      !menuDropdown.contains(e.target) &&
+      e.target !== menuBtn
+    ) {
       closeMenuDropdown();
     }
   });
 
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && !menuDropdown.classList.contains("hidden")) {
+    if (e.key === "Escape" && isMenuOpen()) {
       closeMenuDropdown();
       menuBtn.focus();
     }
@@ -202,12 +284,13 @@ window.addEventListener("DOMContentLoaded", async () => {
     return meta ? meta.label : "Whisper";
   }
 
-  function updateDictionaryHint() {
+  function wordsApply() {
     const meta = getSelectedModelMeta();
-    dictionaryHint.classList.toggle(
-      "hidden",
-      !(meta && meta.engine !== "whisper"),
-    );
+    return !meta || meta.engine === "whisper";
+  }
+
+  function updateDictionaryHint() {
+    dictionarySections.classList.toggle("hidden", !wordsApply());
   }
 
   function setDownloadActionLabel(label) {
@@ -216,16 +299,24 @@ window.addEventListener("DOMContentLoaded", async () => {
   }
 
   function updateFooter() {
-    if (modelsReady) {
-      tooltipWhisper.textContent = `${engineName()}: ${selectedModel}`;
-      modelInfo.classList.remove("hidden");
-      downloadBtn.classList.add("hidden");
-    } else {
-      setDownloadActionLabel(`Download ${engineName()}`);
-      tooltipWhisper.textContent = `${engineName()}: not downloaded`;
-      modelInfo.classList.remove("hidden");
-      downloadBtn.classList.remove("hidden");
-    }
+    modelSelect.title = `${engineName()}: ${selectedModel}`;
+    modelStatus.textContent = modelsReady ? "Ready" : "Not downloaded";
+    downloadBtn.classList.toggle("hidden", modelsReady);
+    if (!modelsReady) setDownloadActionLabel(`Download ${engineName()}`);
+  }
+
+  function showDownloadProgress(pct) {
+    downloadBtn.classList.add("hidden");
+    modelStatus.textContent = `Downloading\u2026 ${pct}%`;
+    downloadBar.style.setProperty("--p", `${pct}%`);
+    downloadBar.classList.remove("hidden");
+  }
+
+  function showDownloadFailed() {
+    downloadBar.classList.add("hidden");
+    updateFooter();
+    modelStatus.textContent = "Download failed";
+    setDownloadActionLabel(`Retry ${engineName()} download`);
   }
 
   // --- Model selector ---
@@ -251,6 +342,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     if (meta) meta.downloaded = res.downloaded;
     updateFooter();
     updateDictionaryHint();
+    updateDictionarySummary();
   });
 
   updateFooter();
@@ -259,24 +351,21 @@ window.addEventListener("DOMContentLoaded", async () => {
   // --- Downloads ---
   downloadBtn.addEventListener("click", async () => {
     downloadBtn.classList.add("hidden");
-    downloadProgress.classList.remove("hidden");
-    downloadProgress.textContent = "Downloading\u2026 0%";
+    showDownloadProgress(0);
     try {
       await window.vapenvibe.startDownloads(selectedModel);
     } catch (err) {
       console.error("[renderer] Download failed:", err);
-      downloadProgress.classList.add("hidden");
-      downloadBtn.classList.remove("hidden");
-      setDownloadActionLabel(`Retry ${engineName()} download`);
+      showDownloadFailed();
     }
   });
 
   window.vapenvibe.onDownloadsProgress((pct) => {
-    downloadProgress.textContent = `Downloading\u2026 ${pct}%`;
+    showDownloadProgress(pct);
   });
 
   window.vapenvibe.onDownloadsComplete(() => {
-    downloadProgress.classList.add("hidden");
+    downloadBar.classList.add("hidden");
     modelsReady = true;
     const meta = getSelectedModelMeta();
     if (meta) meta.downloaded = true;
@@ -285,9 +374,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   });
 
   window.vapenvibe.onDownloadsError((msg) => {
-    downloadProgress.classList.add("hidden");
-    downloadBtn.classList.remove("hidden");
-    setDownloadActionLabel(`Retry ${engineName()} download`);
+    showDownloadFailed();
     console.error("Download error:", msg);
   });
 
@@ -299,46 +386,154 @@ window.addEventListener("DOMContentLoaded", async () => {
   const dictionaryAddBtn = document.getElementById("dictionary-add-btn");
   const dictionaryList = document.getElementById("dictionary-list");
   const dictionaryCount = document.getElementById("dictionary-count");
+  const dictionaryError = document.getElementById("dictionary-error");
+  const dictionaryPanel = dictionaryModal.querySelector("[role='dialog']");
   let dictionaryWords = [];
+  // The entry just added, so only it animates in when the list re-renders.
+  let justAddedWord = null;
+  let justAddedRule = null;
 
   function updateDictionaryCount() {
     updateDictionarySummary();
   }
 
+  const svgNs = "http://www.w3.org/2000/svg";
+
+  /** Icon-only remove button with an accessible name. */
+  function createRemoveButton(label, onRemove) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "remove-btn";
+    btn.setAttribute("aria-label", label);
+    const svg = document.createElementNS(svgNs, "svg");
+    svg.setAttribute("class", "ic");
+    svg.setAttribute("aria-hidden", "true");
+    const use = document.createElementNS(svgNs, "use");
+    use.setAttribute("href", "#i-x");
+    svg.appendChild(use);
+    btn.appendChild(svg);
+    btn.addEventListener("click", () => {
+      const item = btn.closest("li");
+      btn.disabled = true;
+      afterAnimation(item, "is-leaving", onRemove, 200);
+    });
+    return btn;
+  }
+
+  function renderEmptyList(list, text) {
+    const li = document.createElement("li");
+    li.className = "list-empty";
+    li.textContent = text;
+    list.appendChild(li);
+  }
+
+  /** After removing an item, keep keyboard focus inside the list. */
+  function focusAfterRemove(list, index, fallback) {
+    const buttons = list.querySelectorAll(".remove-btn");
+    const next = buttons[Math.min(index, buttons.length - 1)];
+    (next || fallback).focus();
+  }
+
   function renderDictionaryList() {
     updateDictionaryCount();
     dictionaryList.innerHTML = "";
+    if (dictionaryWords.length === 0) {
+      renderEmptyList(dictionaryList, "No words yet");
+      return;
+    }
+    const added = justAddedWord;
+    justAddedWord = null;
     dictionaryWords.forEach((word, i) => {
-      const row = document.createElement("div");
-      row.className = "dictionary-row";
+      const chip = document.createElement("li");
+      chip.className = word === added ? "chip is-new" : "chip";
       const span = document.createElement("span");
-      span.className = "dictionary-word";
+      span.className = "chip-text";
       span.textContent = word;
-      const del = document.createElement("button");
-      del.className = "dictionary-delete-btn";
-      del.textContent = "\u00d7";
-      del.addEventListener("click", () => {
+      const del = createRemoveButton(`Remove ${word}`, () => {
         dictionaryWords.splice(i, 1);
         window.vapenvibe.setDictionary(dictionaryWords);
         renderDictionaryList();
+        focusAfterRemove(dictionaryList, i, dictionaryInput);
       });
-      row.appendChild(span);
-      row.appendChild(del);
-      dictionaryList.appendChild(row);
+      chip.append(span, del);
+      dictionaryList.appendChild(chip);
     });
+  }
+
+  function setDictionaryError(message) {
+    dictionaryError.textContent = message;
+    dictionaryInput.setAttribute("aria-invalid", String(Boolean(message)));
   }
 
   function addDictionaryWord() {
     const word = dictionaryInput.value.trim();
-    if (!word || /[\s,]/.test(word) || dictionaryWords.includes(word)) {
-      dictionaryInput.value = "";
+    if (!word) {
+      setDictionaryError("");
       return;
     }
+    if (/[\s,]/.test(word)) {
+      setDictionaryError("One word at a time, without spaces or commas.");
+      return;
+    }
+    if (dictionaryWords.includes(word)) {
+      setDictionaryError(`${word} is already in the dictionary.`);
+      return;
+    }
+    setDictionaryError("");
     dictionaryWords.push(word);
+    justAddedWord = word;
     window.vapenvibe.setDictionary(dictionaryWords);
     dictionaryInput.value = "";
     renderDictionaryList();
   }
+
+  function isDictionaryOpen() {
+    return (
+      !dictionaryModal.classList.contains("hidden") &&
+      !dictionaryModal.classList.contains("closing")
+    );
+  }
+
+  function closeDictionary() {
+    if (!isDictionaryOpen()) return;
+    setDictionaryError("");
+    hideAnimated(dictionaryModal);
+    dictionaryBtn.focus();
+  }
+
+  // Keep Tab inside the open dictionary.
+  function trapDictionaryFocus(e) {
+    const focusable = Array.from(
+      dictionaryPanel.querySelectorAll("button, input"),
+    ).filter(
+      (el) => !el.disabled && el.offsetParent !== null && el.tabIndex >= 0,
+    );
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
+
+  document.addEventListener("keydown", (e) => {
+    if (!isDictionaryOpen()) return;
+    if (e.key === "Escape") {
+      e.preventDefault();
+      closeDictionary();
+    } else if (e.key === "Tab") {
+      trapDictionaryFocus(e);
+    }
+  });
+
+  // Clicking the dimmed backdrop closes the dictionary.
+  dictionaryModal.addEventListener("click", (e) => {
+    if (e.target === dictionaryModal) closeDictionary();
+  });
 
   // Load count on startup
   window.vapenvibe
@@ -356,15 +551,24 @@ window.addEventListener("DOMContentLoaded", async () => {
     corrections = (await window.vapenvibe.getCorrections()) || [];
     renderDictionaryList();
     renderCorrectionList();
-    dictionaryModal.classList.remove("hidden");
-    selectDictionaryTab(0);
+    // Grow the card out of the row it was opened from.
+    const anchor = dictionaryBtn.closest(".row").getBoundingClientRect();
+    dictionaryModal.style.setProperty(
+      "--anchor-right",
+      `${window.innerWidth - anchor.right}px`,
+    );
+    dictionaryModal.style.setProperty(
+      "--anchor-bottom",
+      `${window.innerHeight - anchor.bottom}px`,
+    );
+    showAnimated(dictionaryModal);
+    selectDictionaryTab(wordsApply() ? 0 : 1);
   });
 
-  dictionaryClose.addEventListener("click", () => {
-    dictionaryModal.classList.add("hidden");
-  });
+  dictionaryClose.addEventListener("click", closeDictionary);
 
   dictionaryAddBtn.addEventListener("click", addDictionaryWord);
+  dictionaryInput.addEventListener("input", () => setDictionaryError(""));
 
   dictionaryInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
@@ -397,6 +601,7 @@ window.addEventListener("DOMContentLoaded", async () => {
       tab.tabIndex = selected ? 0 : -1;
       panel.classList.toggle("hidden", !selected);
     });
+    dictionarySections.style.setProperty("--seg-index", String(index));
     if (focusTab) dictionaryTabs[index].tab.focus();
     else dictionaryTabs[index].focus.focus();
   }
@@ -418,19 +623,31 @@ window.addEventListener("DOMContentLoaded", async () => {
   const correctionAddBtn = document.getElementById("correction-add-btn");
   const correctionList = document.getElementById("correction-list");
   const correctionsNote = document.getElementById("corrections-note");
+  const correctionsCount = document.getElementById("corrections-count");
   let corrections = [];
 
   if (config.builtInCorrections > 0) {
-    correctionsNote.textContent = `Replace what any engine mishears before it's pasted. ${config.builtInCorrections} AI and developer terms (OpenAI, MCP, Docker…) are fixed automatically; your rules take priority.`;
+    const builtIn = document.getElementById("corrections-builtin");
+    builtIn.textContent = `+${config.builtInCorrections} built in`;
+    builtIn.title =
+      "Common AI and developer terms (OpenAI, MCP, Docker\u2026) are fixed automatically. Your rules take priority.";
+    correctionsNote.textContent = "Works with every engine";
   }
 
   function updateDictionarySummary() {
-    const parts = [];
     const w = dictionaryWords.length;
     const c = corrections.length;
-    if (w > 0) parts.push(`${w} word${w === 1 ? "" : "s"}`);
-    if (c > 0) parts.push(`${c} correction${c === 1 ? "" : "s"}`);
-    dictionaryCount.textContent = parts.join(", ");
+    const words = `${w} word${w === 1 ? "" : "s"}`;
+    const rules =
+      c > 0 ? `${c} correction${c === 1 ? "" : "s"}` : "No corrections";
+    if (wordsApply()) {
+      dictionaryCount.textContent = w > 0 ? words : "No words";
+      correctionsCount.textContent = c > 0 ? rules : "";
+    } else {
+      // Only corrections apply to this engine.
+      dictionaryCount.textContent = rules;
+      correctionsCount.textContent = "";
+    }
   }
 
   async function saveCorrections() {
@@ -443,22 +660,42 @@ window.addEventListener("DOMContentLoaded", async () => {
   function renderCorrectionList() {
     updateDictionarySummary();
     correctionList.innerHTML = "";
+    if (corrections.length === 0) {
+      renderEmptyList(correctionList, "No corrections yet");
+      return;
+    }
+    const added = justAddedRule;
+    justAddedRule = null;
     corrections.forEach((rule, i) => {
-      const row = document.createElement("div");
-      row.className = "dictionary-row";
-      const span = document.createElement("span");
-      span.className = "dictionary-word";
-      span.textContent = `${rule.from} \u2192 ${rule.to}`;
-      const del = document.createElement("button");
-      del.className = "dictionary-delete-btn";
-      del.textContent = "\u00d7";
-      del.setAttribute("aria-label", `Remove correction for ${rule.from}`);
-      del.addEventListener("click", () => {
-        corrections.splice(i, 1);
-        saveCorrections();
-      });
-      row.appendChild(span);
-      row.appendChild(del);
+      const row = document.createElement("li");
+      row.className =
+        added && rule.from.toLowerCase() === added ? "rule is-new" : "rule";
+      const from = document.createElement("span");
+      from.className = "rule-from";
+      from.textContent = rule.from;
+      from.title = rule.from;
+      const arrow = document.createElementNS(svgNs, "svg");
+      arrow.setAttribute("class", "ic");
+      arrow.setAttribute("aria-hidden", "true");
+      const arrowUse = document.createElementNS(svgNs, "use");
+      arrowUse.setAttribute("href", "#i-arrow");
+      arrow.appendChild(arrowUse);
+      const to = document.createElement("span");
+      to.className = "rule-to";
+      to.title = rule.to;
+      const said = document.createElement("span");
+      said.className = "sr-only";
+      said.textContent = " becomes ";
+      to.append(said, rule.to);
+      const del = createRemoveButton(
+        `Remove correction for ${rule.from}`,
+        async () => {
+          corrections.splice(i, 1);
+          await saveCorrections();
+          focusAfterRemove(correctionList, i, correctionFrom);
+        },
+      );
+      row.append(from, arrow, to, del);
       correctionList.appendChild(row);
     });
   }
@@ -479,6 +716,7 @@ window.addEventListener("DOMContentLoaded", async () => {
       (r) => r.from.toLowerCase() !== from.toLowerCase(),
     );
     corrections.unshift({ from, to });
+    justAddedRule = from.toLowerCase();
     correctionFrom.value = "";
     correctionTo.value = "";
     correctionFrom.focus();
@@ -504,6 +742,35 @@ window.addEventListener("DOMContentLoaded", async () => {
     .catch((err) => {
       console.error("[renderer] Failed to load corrections:", err);
     });
+
+  // --- Hero state (orb + status line) ---
+  // "Transcribing" starts the moment the key is released, so the orb never
+  // drops back to rest during the stop tail and upload.
+  const hero = { recording: false, transcribing: false };
+
+  function refreshHero() {
+    const mood = hero.recording
+      ? "recording"
+      : hero.transcribing
+        ? "processing"
+        : "idle";
+    const state = listening ? "listening" : mood;
+    const labels = {
+      listening: "Press a new shortcut",
+      recording: "Listening",
+      processing: "Transcribing\u2026",
+      idle: "Hold to talk",
+    };
+    document.body.dataset.state = state;
+    if (holdStatus.textContent !== labels[state]) {
+      holdStatus.textContent = labels[state];
+      // Restart the swap animation so each new status settles in.
+      holdStatus.classList.remove("swap");
+      void holdStatus.offsetWidth;
+      holdStatus.classList.add("swap");
+    }
+    window.vaperHero.setMood(mood);
+  }
 
   // --- Audio recording (push-to-talk) ---
   let audioContext = null;
@@ -730,7 +997,8 @@ window.addEventListener("DOMContentLoaded", async () => {
     audioChunks = [];
     streamSentIdx = 0;
     streaming = false;
-    shortcutEl.classList.add("recording");
+    hero.recording = true;
+    refreshHero();
     clearTimeout(micCloseTimer);
     micCloseTimer = null;
 
@@ -744,7 +1012,8 @@ window.addEventListener("DOMContentLoaded", async () => {
       }
     } catch (err) {
       isRecording = false;
-      shortcutEl.classList.remove("recording");
+      hero.recording = false;
+      refreshHero();
       throw err;
     }
 
@@ -757,6 +1026,7 @@ window.addEventListener("DOMContentLoaded", async () => {
       if (analyser && freqData) {
         analyser.getByteFrequencyData(freqData);
         window.vapenvibe.sendVizFreq(new Uint8Array(freqData));
+        window.vaperHero.setFreq(freqData);
       }
     }, 33);
 
@@ -779,7 +1049,10 @@ window.addEventListener("DOMContentLoaded", async () => {
   async function stopRecording() {
     if (!isRecording) return;
     isRecording = false;
-    shortcutEl.classList.remove("recording");
+    hero.recording = false;
+    hero.transcribing = true;
+    refreshHero();
+    window.vaperHero.setFreq(null);
 
     // Keep listening a moment so the last word isn't clipped.
     await new Promise((resolve) => setTimeout(resolve, STOP_TAIL_MS));
@@ -790,6 +1063,8 @@ window.addEventListener("DOMContentLoaded", async () => {
     if (audioChunks.length === 0) {
       // The mic delivered nothing — report it so it shows in the log
       // instead of the dictation silently vanishing.
+      hero.transcribing = false;
+      refreshHero();
       window.vapenvibe.sendRecordingError("no audio captured from the mic");
       return;
     }
@@ -805,6 +1080,9 @@ window.addEventListener("DOMContentLoaded", async () => {
 
     const wavBuffer = encodeWav(pcm, 16000);
     await window.vapenvibe.sendAudio(wavBuffer);
+    // The pipeline has finished (pasted, skipped as silent, or failed).
+    hero.transcribing = false;
+    refreshHero();
   }
 
   function encodeWav(samples, sampleRate) {
@@ -861,7 +1139,10 @@ window.addEventListener("DOMContentLoaded", async () => {
           `[renderer] Recording error: ${err.name}: ${err.message}`,
         );
         isRecording = false;
-        shortcutEl.classList.remove("recording");
+        hero.recording = false;
+        hero.transcribing = false;
+        refreshHero();
+        window.vaperHero.setFreq(null);
         await teardownRecording();
         // Include error details — the renderer console isn't visible in
         // the main process log, so this is the only diagnosable trace.
@@ -871,13 +1152,8 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   // Transcription status indicator
   window.vapenvibe.onTranscriptionStatus((status) => {
-    if (status === "transcribing") {
-      shortcutEl.textContent = "Transcribing\u2026";
-      shortcutEl.classList.add("listening");
-    } else {
-      shortcutEl.textContent = displayHotkey(config.hotkey);
-      shortcutEl.classList.remove("listening");
-    }
+    hero.transcribing = status === "transcribing";
+    refreshHero();
   });
 
   // --- Hotkey rebinding ---
@@ -895,13 +1171,14 @@ window.addEventListener("DOMContentLoaded", async () => {
   }
 
   updateFnButton();
+  refreshHero();
 
   function stopListening() {
     listening = false;
     heldKeys.clear();
-    shortcutEl.classList.remove("listening");
     changeBtn.classList.remove("invisible");
     updateFnButton();
+    refreshHero();
   }
 
   function displayHotkey(hotkey) {
@@ -921,10 +1198,10 @@ window.addEventListener("DOMContentLoaded", async () => {
     if (listening) return;
     listening = true;
     heldKeys.clear();
-    shortcutEl.textContent = "Press keys\u2026";
-    shortcutEl.classList.add("listening");
+    shortcutEl.textContent = "\u2026";
     changeBtn.classList.add("invisible");
     resetFnBtn.classList.remove("hidden");
+    refreshHero();
   });
 
   resetFnBtn.addEventListener("click", async () => {
@@ -970,8 +1247,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     const MOD_KEYS = ["Control", "Alt", "Shift", "Meta"];
     const key = MOD_KEYS.includes(e.key) ? e.key : physicalKey(e);
     heldKeys.add(key);
-    shortcutEl.textContent =
-      displayHotkey(formatKeys(heldKeys)) || "Press keys\u2026";
+    shortcutEl.textContent = displayHotkey(formatKeys(heldKeys)) || "\u2026";
   });
 
   document.addEventListener("keyup", async (e) => {
@@ -1086,7 +1362,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 
       setMicButtonState(
         "grant",
-        `Access denied — run: ${config.micResetCommand}`,
+        `Access denied. Run: ${config.micResetCommand}`,
       );
 
       // Poll briefly in case the user grants via System Settings while this

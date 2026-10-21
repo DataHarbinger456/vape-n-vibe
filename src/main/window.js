@@ -15,7 +15,9 @@ function createWindow() {
     x: workArea.x + workArea.width - winWidth - padding,
     y: workArea.y + workArea.height - winHeight - padding,
     show: false,
-    backgroundColor: "#000",
+    // Size the web page, not the frame, so the layout fits on Windows too.
+    useContentSize: true,
+    backgroundColor: "#0b0b0c",
     icon: path.join(__dirname, "..", "..", "assets", "icon.png"),
     ...(process.platform === "darwin" && {
       titleBarStyle: "hiddenInset",
