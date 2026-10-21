@@ -7,6 +7,8 @@ build/
 models/*.bin
 models/*.gguf
 models/parakeet-*/
+# Local link to the downloaded models in Application Support (dev runs only)
+/models
 vendor/
 .gg/
 test-results/
