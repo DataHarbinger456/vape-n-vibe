@@ -125,6 +125,30 @@ if [[ "$PLATFORM" == "mac" ]]; then
   fi
 fi
 
+# 8b. Apple speech helper packaged, arm64 and runnable (macOS only).
+# "languages" needs macOS 26+, so on older runners only presence and
+# architecture are checked.
+if [[ "$PLATFORM" == "mac" ]]; then
+  APPLE_SPEECH="$UNPACKED/vendor/apple-speech/apple-speech"
+  if [[ -x "$APPLE_SPEECH" ]]; then
+    pass "Apple speech helper exists"
+    if file "$APPLE_SPEECH" | grep -q "arm64"; then
+      pass "Apple speech helper is arm64"
+    else
+      fail "Apple speech helper is NOT arm64: $(file "$APPLE_SPEECH")"
+    fi
+    if [[ "$(uname -r | cut -d. -f1)" -ge 25 ]]; then
+      if "$APPLE_SPEECH" languages | grep -q '"languages"'; then
+        pass "Apple speech helper runs (languages)"
+      else
+        fail "Apple speech helper fails to run"
+      fi
+    fi
+  else
+    fail "Apple speech helper not found: $APPLE_SPEECH"
+  fi
+fi
+
 # 9. App launches and survives 15s
 echo ""
 echo "  Starting app for launch test (15s)..."

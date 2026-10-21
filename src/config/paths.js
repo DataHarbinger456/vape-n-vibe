@@ -82,6 +82,21 @@ function getVendoredServerPath() {
 }
 
 /**
+ * Vendored Apple speech helper (built by scripts/build-apple-speech.sh,
+ * macOS only). Returns null if not built.
+ */
+function getAppleSpeechPath() {
+  const relativePath = path.join("vendor", "apple-speech", "apple-speech");
+
+  const root = app ? app.getAppPath() : process.cwd();
+  const candidate = isPackaged
+    ? path.join(root.replace("app.asar", "app.asar.unpacked"), relativePath)
+    : path.join(root, relativePath);
+
+  return fs.existsSync(candidate) ? candidate : null;
+}
+
+/**
  * Legacy whisper.cpp server bundled with whisper-node (old whisper.cpp,
  * no flash-attention / VAD). Fallback when the vendored binary is absent.
  */
@@ -142,6 +157,7 @@ function getWhisperCppDir() {
 module.exports = {
   getModelsDir,
   getNativeAddonPath,
+  getAppleSpeechPath,
   getWhisperBinaryPath,
   getWhisperServer,
   getWhisperCppDir,

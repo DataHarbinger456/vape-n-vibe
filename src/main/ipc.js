@@ -13,10 +13,58 @@ const { runPipeline } = require("./pipeline");
 const { restartServer, isReady, stopServer } = require("./whisper-server");
 const { stopParakeet } = require("./parakeet");
 const { transcribePartial, cancelActivePartial } = require("./transcribe");
+const {
+  correctTranscript,
+  sanitizeCorrections,
+  BUILT_IN_COUNT,
+} = require("./corrections");
+
+/** Largest audio chunk accepted from the renderer (~16s of PCM16). */
+const MAX_STREAM_CHUNK_BYTES = 512 * 1024;
 
 const execFileAsync = promisify(execFile);
 
 let _windows = null;
+
+// Live Apple speech session for the recording in progress, if any.
+let streamSession = null;
+
+// Fires when a recording stopped but the window never sent its audio.
+let audioWatchdog = null;
+
+/** How long after the hotkey is released the window's audio may take. */
+const AUDIO_WATCHDOG_MS = 5000;
+
+/** Close the live speech session, if one is open. */
+function cancelLiveStream() {
+  if (streamSession) {
+    streamSession.cancel();
+    streamSession = null;
+  }
+}
+
+/**
+ * Call when the hotkey is released. If the window sends neither the
+ * recording nor an error soon after, log it (otherwise the dictation
+ * would vanish without a trace) and close any live session.
+ */
+function expectRecordedAudio() {
+  clearTimeout(audioWatchdog);
+  audioWatchdog = setTimeout(() => {
+    audioWatchdog = null;
+    console.warn(
+      "[ipc] Recording stopped but no audio arrived from the window — it may not have been ready",
+    );
+    cancelLiveStream();
+  }, AUDIO_WATCHDOG_MS);
+}
+
+/** Call when the window reports a recording error (audio won't come). */
+function recordingFailed() {
+  clearTimeout(audioWatchdog);
+  audioWatchdog = null;
+  cancelLiveStream();
+}
 
 function validateSender(frame) {
   if (!frame || !frame.url) return false;
@@ -51,12 +99,15 @@ function registerIpcHandlers(windows) {
     const selectedModel = store.get("selectedModel") || defaults.defaultModel;
     return {
       model: selectedModel,
-      models: Object.entries(defaults.models).map(([key, m]) => ({
-        key,
-        label: m.label,
-        engine: m.engine,
-        downloaded: modelExists(key),
-      })),
+      models: Object.entries(defaults.models)
+        // Apple engine only appears where it can run (macOS 26+).
+        .filter(([key, m]) => m.engine !== "apple" || modelExists(key))
+        .map(([key, m]) => ({
+          key,
+          label: m.label,
+          engine: m.engine,
+          downloaded: modelExists(key),
+        })),
       selectedModel,
       hotkey: store.get("hotkey"),
       modelExists: modelExists(selectedModel),
@@ -67,6 +118,7 @@ function registerIpcHandlers(windows) {
       micResetCommand: `tccutil reset Microphone ${app.isPackaged ? "com.unstablemind.vapenvibe" : "com.github.Electron"}`,
       platform: process.platform,
       language: store.get("language"),
+      builtInCorrections: BUILT_IN_COUNT,
       version: app.getVersion(),
     };
   });
@@ -91,15 +143,30 @@ function registerIpcHandlers(windows) {
 
     // Tell the renderer when the selected parakeet model can't serve
     // this language — transcription silently falls back to whisper.
-    const selected = defaults.getModel(
-      store.get("selectedModel") || defaults.defaultModel,
-    );
+    const selectedKey = store.get("selectedModel") || defaults.defaultModel;
+    const selected = defaults.getModel(selectedKey);
     const parakeetUnsupported =
       selected.engine === "parakeet" &&
       lang !== "auto" &&
       !selected.languages.includes(lang);
 
-    return { ok: true, parakeetUnsupported };
+    // Apple: fetch the new language's model now so the next dictation
+    // doesn't wait on the download (or report it unsupported).
+    let appleUnsupported = false;
+    if (selected.engine === "apple" && modelExists(selectedKey)) {
+      const appleSpeech = require("./apple-speech");
+      appleUnsupported = !appleSpeech.supportsLanguage(lang);
+      if (!appleUnsupported) {
+        appleSpeech.install(lang).catch((err) => {
+          console.error(
+            "[ipc] Apple speech model install failed:",
+            err.message,
+          );
+        });
+      }
+    }
+
+    return { ok: true, parakeetUnsupported, appleUnsupported };
   });
 
   ipcMain.handle("set-model", (event, key) => {
@@ -238,6 +305,18 @@ function registerIpcHandlers(windows) {
     return true;
   });
 
+  ipcMain.handle("get-corrections", (event) => {
+    if (!validateSender(event.senderFrame)) return [];
+    return sanitizeCorrections(store.get("corrections"));
+  });
+
+  ipcMain.handle("set-corrections", (event, rules) => {
+    if (!validateSender(event.senderFrame)) return false;
+    if (!Array.isArray(rules)) return false;
+    store.set("corrections", sanitizeCorrections(rules));
+    return true;
+  });
+
   ipcMain.handle("restart-app", (event) => {
     if (!validateSender(event.senderFrame)) return false;
     BrowserWindow.getAllWindows().forEach((w) => {
@@ -267,6 +346,56 @@ function registerIpcHandlers(windows) {
   let partialInFlight = false;
   let recordingSessionId = 0;
 
+  function sendPartialText(text) {
+    sendToOverlay("partial-text", text);
+    const win = getWin();
+    if (win) win.webContents.send("partial-text", text);
+  }
+
+  // Recording started: if the Apple engine will handle it, open a live
+  // session the renderer streams audio into. Otherwise the renderer falls
+  // back to periodic audio-partial previews.
+  ipcMain.handle("audio-stream-start", (event) => {
+    if (!validateSender(event.senderFrame)) return { streaming: false };
+    cancelLiveStream();
+
+    const lang = store.get("language");
+    const { getActiveModel, parseOutput } = require("./transcribe");
+    if (getActiveModel(lang).model.engine !== "apple") {
+      return { streaming: false };
+    }
+
+    const sessionId = recordingSessionId;
+    try {
+      streamSession = require("./apple-speech").startStream(lang, {
+        onPartial: (raw) => {
+          if (sessionId !== recordingSessionId) return;
+          const text = parseOutput(raw, { engine: "apple", exact: false });
+          if (text) {
+            sendPartialText(correctTranscript(text, store.get("corrections")));
+          }
+        },
+      });
+    } catch (err) {
+      console.error("[ipc] Apple speech stream failed to start:", err.message);
+      streamSession = null;
+      return { streaming: false };
+    }
+    return { streaming: true };
+  });
+
+  ipcMain.on("audio-stream-chunk", (event, chunk) => {
+    if (!validateSender(event.senderFrame)) return;
+    if (!streamSession) return;
+    if (!(chunk instanceof ArrayBuffer || ArrayBuffer.isView(chunk))) return;
+    const bytes = ArrayBuffer.isView(chunk)
+      ? Buffer.from(chunk.buffer, chunk.byteOffset, chunk.byteLength)
+      : Buffer.from(chunk);
+    if (bytes.length === 0 || bytes.length > MAX_STREAM_CHUNK_BYTES) return;
+    if (bytes.length % 2 !== 0) return; // PCM16 — whole samples only
+    streamSession.write(bytes);
+  });
+
   ipcMain.handle("audio-partial", async (event, wavBuffer) => {
     if (!validateSender(event.senderFrame)) return "";
     if (partialInFlight) return "";
@@ -281,9 +410,7 @@ function registerIpcHandlers(windows) {
       // If audio-recorded fired while we were awaiting, sessionId will
       // differ from recordingSessionId and we silently discard the result.
       if (text && sessionId === recordingSessionId) {
-        sendToOverlay("partial-text", text);
-        const win = getWin();
-        if (win) win.webContents.send("partial-text", text);
+        sendPartialText(correctTranscript(text, store.get("corrections")));
       }
 
       return text;
@@ -303,8 +430,12 @@ function registerIpcHandlers(windows) {
     // and abort it — the whisper server is single-threaded, so an active
     // partial would otherwise delay the final transcription by its full
     // inference time.
+    clearTimeout(audioWatchdog);
+    audioWatchdog = null;
     recordingSessionId++;
     cancelActivePartial();
+    const session = streamSession;
+    streamSession = null;
 
     // Clear overlay text (visualizer mode handled by pipeline)
     sendToOverlay("partial-text", "");
@@ -318,10 +449,18 @@ function registerIpcHandlers(windows) {
         if (win) win.webContents.send("transcription-status", status);
       },
       sendOverlay: (mode) => sendToOverlay("viz-mode", mode),
+      streamSession: session,
     });
 
     return true;
   });
 }
 
-module.exports = { registerIpcHandlers, getWin, sendToOverlay, validateSender };
+module.exports = {
+  registerIpcHandlers,
+  getWin,
+  sendToOverlay,
+  validateSender,
+  expectRecordedAudio,
+  recordingFailed,
+};

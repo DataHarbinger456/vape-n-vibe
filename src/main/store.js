@@ -11,6 +11,10 @@ const store = new Store({
     language: "auto",
     selectedModel: defaults.defaultModel,
     dictionaryWords: [],
+    // Find-and-replace rules applied to every transcript: [{ from, to }].
+    corrections: [],
+    // Set once the one-time switch to the Apple engine has been applied.
+    appleDefaultApplied: false,
   },
 });
 

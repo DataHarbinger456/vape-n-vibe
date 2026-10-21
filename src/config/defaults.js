@@ -85,6 +85,15 @@ const defaults = {
         },
       ],
     },
+    // Apple's on-device SpeechAnalyzer (macOS 26+). macOS owns and
+    // downloads the model itself, so there are no files to fetch —
+    // availability comes from src/main/apple-speech.js isAvailable().
+    "apple-speech": {
+      engine: "apple",
+      label: "Apple",
+      systemManaged: true,
+      files: [],
+    },
   },
 
   defaultModel: "whisper-large-v3-turbo-q5",

@@ -18,12 +18,14 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // ---------------------------------------------------------------------------
 const handlers = {};
 const storedWords = { value: null };
+const storedCorrections = { value: null };
 
 // Fake store
 const fakeStore = {
   get: vi.fn(() => []),
   set: vi.fn((key, val) => {
     if (key === "dictionaryWords") storedWords.value = val;
+    if (key === "corrections") storedCorrections.value = val;
   }),
 };
 
@@ -145,5 +147,28 @@ describe("set-dictionary caps", () => {
   it("rejects words with whitespace or commas", () => {
     handlers["set-dictionary"](validEvent, ["bad word", "bad,word", "fine"]);
     expect(storedWords.value).toEqual(["fine"]);
+  });
+});
+
+describe("set-corrections", () => {
+  it("stores only valid, trimmed rules", () => {
+    const ok = handlers["set-corrections"](validEvent, [
+      { from: " whispering parakeet ", to: " Whisper and Parakeet " },
+      { from: "", to: "x" },
+      { from: "y" },
+      "junk",
+    ]);
+    expect(ok).toBe(true);
+    expect(storedCorrections.value).toEqual([
+      { from: "whispering parakeet", to: "Whisper and Parakeet" },
+    ]);
+  });
+
+  it("rejects non-array payloads and invalid senders", () => {
+    storedCorrections.value = null;
+    expect(handlers["set-corrections"](validEvent, "nope")).toBe(false);
+    const badEvent = { senderFrame: { url: "https://example.com" } };
+    expect(handlers["set-corrections"](badEvent, [])).toBe(false);
+    expect(storedCorrections.value).toBeNull();
   });
 });

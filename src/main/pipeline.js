@@ -7,9 +7,14 @@ const store = require("./store");
 // individual exports.  vi.mock does not intercept CJS requires reliably
 // in this Vitest setup; mutating module.exports is the supported path.
 const transcribeMod = require("./transcribe");
-const { pasteText } = require("./paste");
+// Module object (not destructured) for the same reason as transcribeMod.
+const pasteMod = require("./paste");
+const { correctTranscript } = require("./corrections");
 
-async function runPipeline(wavBuffer, { sendStatus, sendOverlay }) {
+async function runPipeline(
+  wavBuffer,
+  { sendStatus, sendOverlay, streamSession = null },
+) {
   const buf = Buffer.from(wavBuffer);
 
   // Single source of truth for "is this clip worth transcribing?" lives
@@ -21,6 +26,7 @@ async function runPipeline(wavBuffer, { sendStatus, sendOverlay }) {
     console.log(
       `[pipeline] Audio too short or silent (${analysis.duration.toFixed(2)}s, max RMS ${Math.round(analysis.maxRms)}), skipping`,
     );
+    if (streamSession) streamSession.cancel();
     sendStatus("idle");
     sendOverlay("idle");
     return;
@@ -39,7 +45,9 @@ async function runPipeline(wavBuffer, { sendStatus, sendOverlay }) {
     let text = await transcribeMod.transcribe(wavPath, store.get("language"), {
       rawWav: buf,
       analysis,
+      streamSession,
     });
+    text = correctTranscript(text, store.get("corrections"));
     console.log("[pipeline] Transcription result:", text);
 
     sendStatus("idle");
@@ -47,7 +55,7 @@ async function runPipeline(wavBuffer, { sendStatus, sendOverlay }) {
 
     if (text && text.trim()) {
       try {
-        await pasteText(text.trim());
+        await pasteMod.pasteText(text.trim());
       } catch (err) {
         console.error("[pipeline] Paste failed:", err.message);
       }

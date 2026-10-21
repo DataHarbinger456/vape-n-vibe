@@ -19,6 +19,23 @@ function getActiveModel(lang) {
     selected && defaults.models[selected] ? selected : defaults.defaultModel;
   const model = defaults.models[key];
 
+  if (model.engine === "apple") {
+    const { modelExists } = require("./download");
+    if (!modelExists(key)) {
+      console.log(
+        "[transcribe] Apple speech unavailable (needs macOS 26+ and the built helper) — falling back to whisper",
+      );
+      return defaults.getModelByEngine("whisper");
+    }
+    const language = lang || store.get("language");
+    if (!require("./apple-speech").supportsLanguage(language)) {
+      console.log(
+        `[transcribe] Language "${language}" unsupported by Apple speech — falling back to whisper`,
+      );
+      return defaults.getModelByEngine("whisper");
+    }
+  }
+
   if (model.engine === "parakeet") {
     const { modelExists } = require("./download");
     const language = lang || store.get("language");
@@ -379,17 +396,35 @@ function buildWhisperForm(wavData, { promptWords = [] } = {}) {
  *   transcribe() will not re-read or re-analyze the file.  This is the
  *   path used by the pipeline so a recording is read & analyzed exactly
  *   once.
+ * @param {{ finish: Function, cancel: Function }} [options.streamSession]
+ *   Live Apple speech session that already heard this recording. When the
+ *   Apple engine handles the request its result is used directly (falling
+ *   back to a file decode if it fails); otherwise it is cancelled.
  */
-async function transcribe(wavPath, lang, { rawWav, analysis } = {}) {
+async function transcribe(
+  wavPath,
+  lang,
+  { rawWav, analysis, streamSession } = {},
+) {
   cancelIdleStop();
   try {
-    return await transcribeInner(wavPath, lang, { rawWav, analysis });
+    return await transcribeInner(wavPath, lang, {
+      rawWav,
+      analysis,
+      streamSession,
+    });
   } finally {
+    // Idempotent: a no-op once the session has finished.
+    if (streamSession) streamSession.cancel();
     scheduleIdleStop();
   }
 }
 
-async function transcribeInner(wavPath, lang, { rawWav, analysis } = {}) {
+async function transcribeInner(
+  wavPath,
+  lang,
+  { rawWav, analysis, streamSession } = {},
+) {
   // --- Pre-transcription audio validation ---
   // The pipeline analyzes the buffer once and passes the result through;
   // legacy/standalone callers still get the original behaviour.
@@ -410,6 +445,42 @@ async function transcribeInner(wavPath, lang, { rawWav, analysis } = {}) {
   const wavData = trimSilenceWav(rawWav);
 
   const active = getActiveModel(lang);
+  if (active.model.engine === "apple") {
+    const appleSpeech = require("./apple-speech");
+    let raw = null;
+    if (streamSession) {
+      // The live session already heard everything — just finalize it.
+      try {
+        raw = await streamSession.finish({
+          timeoutMs: Math.max(
+            appleSpeech.STREAM_FINISH_MIN_MS,
+            audioDuration * 2000,
+          ),
+        });
+        console.log(
+          `[transcribe] Apple speech stream (${Math.round(audioDuration)}s audio)`,
+        );
+      } catch (err) {
+        console.warn(
+          "[transcribe] Apple speech stream failed, decoding the file instead:",
+          err.message,
+        );
+      }
+    }
+    if (raw === null) {
+      // SpeechAnalyzer handles long-form audio itself — no chunking needed.
+      console.log(
+        `[transcribe] Apple speech decode (${Math.round(audioDuration)}s audio)`,
+      );
+      raw = await appleSpeech.transcribeWav(wavData, lang, {
+        duration: audioDuration,
+      });
+    }
+    const text = parseOutput(raw, { engine: "apple" });
+    console.log("[transcribe] result:", text);
+    return text;
+  }
+
   if (active.model.engine === "parakeet") {
     const parakeet = require("./parakeet");
     // Keep each offline decode within sherpa-onnx's 20-second segment
@@ -590,6 +661,25 @@ function stripFillerWords(text) {
 }
 
 /**
+ * Lowercase letter that starts a new sentence: after `.`, `!` or `?` and
+ * whitespace. Skips ellipses ("well... then") and single-letter
+ * abbreviations ("e.g. this", "U.S. army").
+ */
+const SENTENCE_START_RE = /(?<!\.|(?:^|[\s.])\p{L})([.!?]\s+)(\p{Ll})/gu;
+
+/**
+ * Capitalise the first letter of each sentence. Apple speech finalizes
+ * audio in chunks, and a chunk that follows a full stop can start in
+ * lowercase ("testing it out. but do have…").
+ */
+function capitalizeSentenceStarts(text) {
+  return text.replace(
+    SENTENCE_START_RE,
+    (_, boundary, letter) => boundary + letter.toUpperCase(),
+  );
+}
+
+/**
  * Detect repetitive loops — Whisper sometimes gets stuck repeating
  * the same word/phrase.  If any single word accounts for ≥60% of all
  * words (and there are at least 4 words), treat it as a hallucination.
@@ -648,7 +738,7 @@ function stripTrailingHallucinations(text) {
  *   "hmm" survive.  Structural filtering, repetitive-loop detection, and
  *   trailing-phrase stripping always run.
  * @param {string} [options.engine="whisper"] - Producing engine.  For
- *   "parakeet" the whisper-specific exact-match set and trailing-phrase
+ *   "parakeet" and "apple" the whisper-specific exact-match set and trailing-phrase
  *   stripping are skipped entirely: transducers don't fabricate
  *   YouTube-outro hallucinations, so stripping a genuine "thanks"/"bye"
  *   would be a regression.  Structural and repetitive-loop filtering
@@ -710,6 +800,7 @@ function parseOutput(stdout, { exact = true, engine = "whisper" } = {}) {
 
   // 4. Strip trailing hallucinated phrases from real transcriptions —
   //    whisper only (see `engine` option above).
+  if (engine === "apple") return capitalizeSentenceStarts(text);
   if (!whisperFilters) return text;
 
   const stripped = stripTrailingHallucinations(text);
@@ -784,6 +875,30 @@ async function transcribePartialInner(wavBuffer, lang) {
   if (!hasSpeech) return "";
 
   const active = getActiveModel(lang);
+  if (active.model.engine === "apple") {
+    // Each preview is a separate short-lived helper run; register its
+    // abort controller so stopping the recording kills it immediately.
+    const controller = new AbortController();
+    activePartialController = controller;
+    try {
+      const raw = await require("./apple-speech").transcribeWav(wavData, lang, {
+        duration: partialDuration,
+        signal: controller.signal,
+      });
+      return parseOutput(raw, { engine: "apple", exact: false });
+    } catch (err) {
+      // Best-effort preview — the final transcription still runs on stop.
+      if (err.name !== "AbortError") {
+        console.warn("[transcribe-partial] apple preview failed:", err.message);
+      }
+      return "";
+    } finally {
+      if (activePartialController === controller) {
+        activePartialController = null;
+      }
+    }
+  }
+
   if (active.model.engine === "parakeet") {
     // Live preview on Parakeet. Its decode is synchronous and can't be
     // cancelled, so a preview shares the single worker with the final decode.

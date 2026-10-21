@@ -98,7 +98,7 @@
           <label class="setting-label">Dictionary</label>
           <div class="setting-right">
             <span class="dictionary-count hidden" id="dictionary-hint"
-              >Whisper only</span
+              >Words: Whisper only</span
             >
             <span class="dictionary-count" id="dictionary-count"></span>
             <button class="setting-btn" id="dictionary-btn">Edit</button>
@@ -185,13 +185,81 @@
           <span class="dictionary-title">Dictionary</span>
           <button class="change-btn" id="dictionary-close">Done</button>
         </div>
-        <div class="dictionary-add">
-          <input type="text" id="dictionary-input" placeholder="Add a word…" />
-          <button class="dictionary-add-btn" id="dictionary-add-btn">
-            Add
+        <div
+          class="dictionary-tabs"
+          role="tablist"
+          aria-label="Dictionary sections"
+        >
+          <button
+            class="dictionary-tab"
+            id="dictionary-tab-words"
+            role="tab"
+            aria-selected="true"
+            aria-controls="dictionary-words-panel"
+          >
+            Words
+          </button>
+          <button
+            class="dictionary-tab"
+            id="dictionary-tab-corrections"
+            role="tab"
+            aria-selected="false"
+            aria-controls="dictionary-corrections-panel"
+            tabindex="-1"
+          >
+            Corrections
           </button>
         </div>
-        <div class="dictionary-list" id="dictionary-list"></div>
+        <div
+          class="dictionary-section"
+          id="dictionary-words-panel"
+          role="tabpanel"
+          aria-labelledby="dictionary-tab-words"
+        >
+          <p class="dictionary-note">Spelling hints for Whisper.</p>
+          <div class="dictionary-add">
+            <input
+              type="text"
+              id="dictionary-input"
+              placeholder="Add a word…"
+              aria-label="New word"
+            />
+            <button class="dictionary-add-btn" id="dictionary-add-btn">
+              Add
+            </button>
+          </div>
+          <div class="dictionary-list" id="dictionary-list"></div>
+        </div>
+        <div
+          class="dictionary-section hidden"
+          id="dictionary-corrections-panel"
+          role="tabpanel"
+          aria-labelledby="dictionary-tab-corrections"
+        >
+          <p class="dictionary-note" id="corrections-note">
+            Replace what any engine mishears before it's pasted.
+          </p>
+          <div class="dictionary-add">
+            <input
+              type="text"
+              id="correction-from"
+              placeholder="Heard as…"
+              aria-label="Heard as"
+              maxlength="60"
+            />
+            <input
+              type="text"
+              id="correction-to"
+              placeholder="Write as…"
+              aria-label="Write as"
+              maxlength="100"
+            />
+            <button class="dictionary-add-btn" id="correction-add-btn">
+              Add
+            </button>
+          </div>
+          <div class="dictionary-list" id="correction-list"></div>
+        </div>
       </div>
     </div>
     <script src="renderer.js"></script>

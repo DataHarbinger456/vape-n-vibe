@@ -100,6 +100,11 @@ window.addEventListener("DOMContentLoaded", async () => {
         "[renderer] Language unsupported by Parakeet — Whisper will be used",
       );
     }
+    if (res && res.appleUnsupported) {
+      console.warn(
+        "[renderer] Language unsupported by Apple — Whisper will be used",
+      );
+    }
   });
 
   // --- Hotkey display ---
@@ -194,14 +199,14 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   function engineName() {
     const meta = getSelectedModelMeta();
-    return meta && meta.engine === "parakeet" ? "Parakeet" : "Whisper";
+    return meta ? meta.label : "Whisper";
   }
 
   function updateDictionaryHint() {
     const meta = getSelectedModelMeta();
     dictionaryHint.classList.toggle(
       "hidden",
-      !(meta && meta.engine === "parakeet"),
+      !(meta && meta.engine !== "whisper"),
     );
   }
 
@@ -297,8 +302,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   let dictionaryWords = [];
 
   function updateDictionaryCount() {
-    const n = dictionaryWords.length;
-    dictionaryCount.textContent = n > 0 ? `${n} word${n === 1 ? "" : "s"}` : "";
+    updateDictionarySummary();
   }
 
   function renderDictionaryList() {
@@ -349,9 +353,11 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   dictionaryBtn.addEventListener("click", async () => {
     dictionaryWords = (await window.vapenvibe.getDictionary()) || [];
+    corrections = (await window.vapenvibe.getCorrections()) || [];
     renderDictionaryList();
+    renderCorrectionList();
     dictionaryModal.classList.remove("hidden");
-    dictionaryInput.focus();
+    selectDictionaryTab(0);
   });
 
   dictionaryClose.addEventListener("click", () => {
@@ -370,6 +376,135 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
+  // --- Dictionary tabs (Words / Corrections) ---
+  const dictionaryTabs = [
+    {
+      tab: document.getElementById("dictionary-tab-words"),
+      panel: document.getElementById("dictionary-words-panel"),
+      focus: dictionaryInput,
+    },
+    {
+      tab: document.getElementById("dictionary-tab-corrections"),
+      panel: document.getElementById("dictionary-corrections-panel"),
+      focus: document.getElementById("correction-from"),
+    },
+  ];
+
+  function selectDictionaryTab(index, { focusTab = false } = {}) {
+    dictionaryTabs.forEach(({ tab, panel }, i) => {
+      const selected = i === index;
+      tab.setAttribute("aria-selected", String(selected));
+      tab.tabIndex = selected ? 0 : -1;
+      panel.classList.toggle("hidden", !selected);
+    });
+    if (focusTab) dictionaryTabs[index].tab.focus();
+    else dictionaryTabs[index].focus.focus();
+  }
+
+  dictionaryTabs.forEach(({ tab }, i) => {
+    tab.addEventListener("click", () => selectDictionaryTab(i));
+    tab.addEventListener("keydown", (e) => {
+      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+      e.preventDefault();
+      const step = e.key === "ArrowRight" ? 1 : -1;
+      const next = (i + step + dictionaryTabs.length) % dictionaryTabs.length;
+      selectDictionaryTab(next, { focusTab: true });
+    });
+  });
+
+  // --- Corrections (find-and-replace, every engine) ---
+  const correctionFrom = document.getElementById("correction-from");
+  const correctionTo = document.getElementById("correction-to");
+  const correctionAddBtn = document.getElementById("correction-add-btn");
+  const correctionList = document.getElementById("correction-list");
+  const correctionsNote = document.getElementById("corrections-note");
+  let corrections = [];
+
+  if (config.builtInCorrections > 0) {
+    correctionsNote.textContent = `Replace what any engine mishears before it's pasted. ${config.builtInCorrections} AI and developer terms (OpenAI, MCP, Docker…) are fixed automatically; your rules take priority.`;
+  }
+
+  function updateDictionarySummary() {
+    const parts = [];
+    const w = dictionaryWords.length;
+    const c = corrections.length;
+    if (w > 0) parts.push(`${w} word${w === 1 ? "" : "s"}`);
+    if (c > 0) parts.push(`${c} correction${c === 1 ? "" : "s"}`);
+    dictionaryCount.textContent = parts.join(", ");
+  }
+
+  async function saveCorrections() {
+    await window.vapenvibe.setCorrections(corrections);
+    // Read back the stored, validated rules so the list matches them.
+    corrections = (await window.vapenvibe.getCorrections()) || [];
+    renderCorrectionList();
+  }
+
+  function renderCorrectionList() {
+    updateDictionarySummary();
+    correctionList.innerHTML = "";
+    corrections.forEach((rule, i) => {
+      const row = document.createElement("div");
+      row.className = "dictionary-row";
+      const span = document.createElement("span");
+      span.className = "dictionary-word";
+      span.textContent = `${rule.from} \u2192 ${rule.to}`;
+      const del = document.createElement("button");
+      del.className = "dictionary-delete-btn";
+      del.textContent = "\u00d7";
+      del.setAttribute("aria-label", `Remove correction for ${rule.from}`);
+      del.addEventListener("click", () => {
+        corrections.splice(i, 1);
+        saveCorrections();
+      });
+      row.appendChild(span);
+      row.appendChild(del);
+      correctionList.appendChild(row);
+    });
+  }
+
+  function addCorrection() {
+    const from = correctionFrom.value.trim();
+    const to = correctionTo.value.trim();
+    if (!from) {
+      correctionFrom.focus();
+      return;
+    }
+    if (!to) {
+      correctionTo.focus();
+      return;
+    }
+    // Same "heard as" phrase replaces the earlier rule.
+    corrections = corrections.filter(
+      (r) => r.from.toLowerCase() !== from.toLowerCase(),
+    );
+    corrections.unshift({ from, to });
+    correctionFrom.value = "";
+    correctionTo.value = "";
+    correctionFrom.focus();
+    saveCorrections();
+  }
+
+  correctionAddBtn.addEventListener("click", addCorrection);
+  [correctionFrom, correctionTo].forEach((input) => {
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        addCorrection();
+      }
+    });
+  });
+
+  window.vapenvibe
+    .getCorrections()
+    .then((rules) => {
+      corrections = rules || [];
+      updateDictionarySummary();
+    })
+    .catch((err) => {
+      console.error("[renderer] Failed to load corrections:", err);
+    });
+
   // --- Audio recording (push-to-talk) ---
   let audioContext = null;
   let processor = null;
@@ -378,13 +513,28 @@ window.addEventListener("DOMContentLoaded", async () => {
   let freqData = null;
   let vizInterval = null;
   let partialInterval = null;
+  let streamInterval = null;
   // Live-preview window size in seconds — partials transcribe only the
   // most recent slice so preview cost stays constant regardless of
   // total recording length.
   const PARTIAL_WINDOW_S = 15;
+  // Keep capturing this long after the hotkey is released so the last
+  // word isn't clipped.
+  const STOP_TAIL_MS = 250;
+  // Keep the mic open this long after a dictation so the next one starts
+  // instantly and includes the audio from just before the key press
+  // (see PREROLL_S in audio-worklet-processor.js).
+  const MIC_WARM_MS = 30000;
+  // How often audio is forwarded to a live (Apple) transcription stream.
+  const STREAM_FLUSH_MS = 100;
   let stream = null;
+  let streamDeviceId = null;
+  let micCloseTimer = null;
   let audioChunks = [];
+  let streamSentIdx = 0;
   let isRecording = false;
+  let capturing = false;
+  let streaming = false;
 
   async function createAudioContext() {
     const ctx = new AudioContext({ sampleRate: 16000 });
@@ -418,9 +568,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  // Tear down all recording resources (stream, nodes, intervals).
-  // Safe to call even if some resources are null.
-  async function teardownRecording() {
+  function clearCaptureTimers() {
     if (partialInterval) {
       clearInterval(partialInterval);
       partialInterval = null;
@@ -429,6 +577,19 @@ window.addEventListener("DOMContentLoaded", async () => {
       clearInterval(vizInterval);
       vizInterval = null;
     }
+    if (streamInterval) {
+      clearInterval(streamInterval);
+      streamInterval = null;
+    }
+  }
+
+  // Tear down all recording resources (stream, nodes, intervals) and
+  // close the mic. Safe to call even if some resources are null.
+  async function teardownRecording() {
+    clearCaptureTimers();
+    clearTimeout(micCloseTimer);
+    micCloseTimer = null;
+    capturing = false;
     if (processor) {
       processor.port.postMessage("stop");
       processor.disconnect();
@@ -442,6 +603,7 @@ window.addEventListener("DOMContentLoaded", async () => {
       stream.getTracks().forEach((t) => t.stop());
       stream = null;
     }
+    streamDeviceId = null;
     analyser = null;
     freqData = null;
     if (audioContext) {
@@ -455,29 +617,140 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
+  // Stop capturing but keep the mic open for MIC_WARM_MS so the next
+  // dictation starts instantly. The close goes through the recording
+  // queue so it can never interleave with a start/stop.
+  function pauseCapture() {
+    clearCaptureTimers();
+    capturing = false;
+    if (processor) processor.port.postMessage("stop");
+    clearTimeout(micCloseTimer);
+    micCloseTimer = setTimeout(() => {
+      micCloseTimer = null;
+      recordingOp = recordingOp
+        .then(() => (isRecording ? undefined : teardownRecording()))
+        .catch((err) => {
+          console.error("[renderer] Mic close failed:", err);
+        });
+    }, MIC_WARM_MS);
+  }
+
+  function micIsWarm(deviceId) {
+    return (
+      stream !== null &&
+      processor !== null &&
+      streamDeviceId === deviceId &&
+      stream.getAudioTracks().some((t) => t.readyState === "live")
+    );
+  }
+
+  async function openMic(deviceId) {
+    // Raw mic signal: Chromium's call-oriented processing (echo
+    // cancellation, noise suppression, auto gain) reshapes speech in ways
+    // that hurt recognition, and auto gain ramps up over the first words.
+    const audio = {
+      echoCancellation: false,
+      noiseSuppression: false,
+      autoGainControl: false,
+      channelCount: 1,
+    };
+    if (deviceId) audio.deviceId = deviceId;
+
+    await ensureAudioContext();
+    stream = await navigator.mediaDevices.getUserMedia({ audio });
+    streamDeviceId = deviceId;
+    source = audioContext.createMediaStreamSource(stream);
+
+    // Analyser for the overlay visualizer
+    analyser = audioContext.createAnalyser();
+    analyser.fftSize = 256;
+    freqData = new Uint8Array(analyser.frequencyBinCount);
+    source.connect(analyser);
+
+    processor = new AudioWorkletNode(audioContext, "recorder-processor");
+    processor.port.onmessage = (e) => {
+      if (capturing) audioChunks.push(e.data);
+    };
+    source.connect(processor);
+  }
+
+  // Forward audio captured since the last flush to the live stream.
+  function flushAudioStream() {
+    if (!streaming || streamSentIdx >= audioChunks.length) return;
+    let total = 0;
+    for (let i = streamSentIdx; i < audioChunks.length; i++) {
+      total += audioChunks[i].length;
+    }
+    const pcm = new Int16Array(total);
+    let off = 0;
+    for (let i = streamSentIdx; i < audioChunks.length; i++) {
+      const chunk = audioChunks[i];
+      for (let j = 0; j < chunk.length; j++) {
+        const s = Math.max(-1, Math.min(1, chunk[j]));
+        pcm[off++] = s < 0 ? s * 0x8000 : s * 0x7fff;
+      }
+    }
+    streamSentIdx = audioChunks.length;
+    window.vapenvibe.sendAudioStreamChunk(pcm.buffer);
+  }
+
+  // Send a sliding window of recent audio for live transcription
+  // preview (engines without live streaming).  Re-transcribing the
+  // *entire* accumulated buffer each tick is quadratic in recording
+  // length (a 2-minute recording would decode ~1 hour of audio in
+  // total) — whisper.cpp's own stream example uses a fixed ~10s window
+  // for exactly this reason. The preview shows only recent speech
+  // (live-caption style); the final paste on stop still transcribes the
+  // full recording.
+  function sendPartialWindow() {
+    if (audioChunks.length === 0) return;
+    const maxSamples = 16000 * PARTIAL_WINDOW_S;
+    // Walk chunks from the tail until we have enough samples.
+    let take = 0;
+    let firstChunk = audioChunks.length;
+    while (firstChunk > 0 && take < maxSamples) {
+      firstChunk--;
+      take += audioChunks[firstChunk].length;
+    }
+    const pcm = new Float32Array(Math.min(take, maxSamples));
+    let off = pcm.length;
+    for (let i = audioChunks.length - 1; i >= firstChunk && off > 0; i--) {
+      const chunk = audioChunks[i];
+      const copyLen = Math.min(chunk.length, off);
+      pcm.set(chunk.subarray(chunk.length - copyLen), off - copyLen);
+      off -= copyLen;
+    }
+    const wavBuf = encodeWav(pcm, 16000);
+    window.vapenvibe.sendPartialAudio(wavBuf);
+  }
+
   async function startRecording() {
     if (isRecording) return;
     isRecording = true;
     audioChunks = [];
+    streamSentIdx = 0;
+    streaming = false;
     shortcutEl.classList.add("recording");
+    clearTimeout(micCloseTimer);
+    micCloseTimer = null;
 
     const deviceId = micSelect.value;
-    const constraints = deviceId ? { audio: { deviceId } } : { audio: true };
     try {
-      await ensureAudioContext();
-      stream = await navigator.mediaDevices.getUserMedia(constraints);
+      if (micIsWarm(deviceId)) {
+        await ensureAudioContext();
+      } else {
+        await teardownRecording();
+        await openMic(deviceId);
+      }
     } catch (err) {
       isRecording = false;
       shortcutEl.classList.remove("recording");
       throw err;
     }
-    source = audioContext.createMediaStreamSource(stream);
 
-    // Set up analyser for overlay visualizer
-    analyser = audioContext.createAnalyser();
-    analyser.fftSize = 256;
-    freqData = new Uint8Array(analyser.frequencyBinCount);
-    source.connect(analyser);
+    // The worklet sends its pre-press buffer first, then live audio.
+    capturing = true;
+    processor.port.postMessage("start");
 
     // Stream frequency data to overlay at ~30fps
     vizInterval = setInterval(() => {
@@ -487,44 +760,20 @@ window.addEventListener("DOMContentLoaded", async () => {
       }
     }, 33);
 
-    processor = new AudioWorkletNode(audioContext, "recorder-processor");
-    processor.port.onmessage = (e) => {
-      if (isRecording) {
-        audioChunks.push(e.data);
-      }
-    };
-    processor.port.postMessage("start");
-
-    source.connect(processor);
-
-    // Send a sliding window of recent audio for live transcription
-    // preview every 2s.  Re-transcribing the *entire* accumulated buffer
-    // each tick is quadratic in recording length (a 2-minute recording
-    // would decode ~1 hour of audio in total) — whisper.cpp's own
-    // stream example uses a fixed ~10s window for exactly this reason.
-    // The preview shows only recent speech (live-caption style); the
-    // final paste on stop still transcribes the full recording.
-    partialInterval = setInterval(() => {
-      if (audioChunks.length === 0) return;
-      const maxSamples = 16000 * PARTIAL_WINDOW_S;
-      // Walk chunks from the tail until we have enough samples.
-      let take = 0;
-      let firstChunk = audioChunks.length;
-      while (firstChunk > 0 && take < maxSamples) {
-        firstChunk--;
-        take += audioChunks[firstChunk].length;
-      }
-      const pcm = new Float32Array(Math.min(take, maxSamples));
-      let off = pcm.length;
-      for (let i = audioChunks.length - 1; i >= firstChunk && off > 0; i--) {
-        const chunk = audioChunks[i];
-        const copyLen = Math.min(chunk.length, off);
-        pcm.set(chunk.subarray(chunk.length - copyLen), off - copyLen);
-        off -= copyLen;
-      }
-      const wavBuf = encodeWav(pcm, 16000);
-      window.vapenvibe.sendPartialAudio(wavBuf);
-    }, 2000);
+    // Apple engine: stream audio for live transcription. Other engines:
+    // periodic sliding-window previews every 2s.
+    let res = null;
+    try {
+      res = await window.vapenvibe.startAudioStream();
+    } catch (err) {
+      console.warn("[renderer] Live stream unavailable:", err);
+    }
+    if (res && res.streaming) {
+      streaming = true;
+      streamInterval = setInterval(flushAudioStream, STREAM_FLUSH_MS);
+    } else {
+      partialInterval = setInterval(sendPartialWindow, 2000);
+    }
   }
 
   async function stopRecording() {
@@ -532,9 +781,18 @@ window.addEventListener("DOMContentLoaded", async () => {
     isRecording = false;
     shortcutEl.classList.remove("recording");
 
-    await teardownRecording();
+    // Keep listening a moment so the last word isn't clipped.
+    await new Promise((resolve) => setTimeout(resolve, STOP_TAIL_MS));
+    flushAudioStream();
+    streaming = false;
+    pauseCapture();
 
-    if (audioChunks.length === 0) return;
+    if (audioChunks.length === 0) {
+      // The mic delivered nothing — report it so it shows in the log
+      // instead of the dictation silently vanishing.
+      window.vapenvibe.sendRecordingError("no audio captured from the mic");
+      return;
+    }
 
     const length = audioChunks.reduce((sum, c) => sum + c.length, 0);
     const pcm = new Float32Array(length);

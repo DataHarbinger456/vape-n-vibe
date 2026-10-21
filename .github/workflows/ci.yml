@@ -29,6 +29,19 @@ jobs:
           npm run lint
           npm run format:check
 
+      - name: Select Xcode 26 (macOS 26 SDK for the Apple speech helper)
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          if [[ -z "$XCODE" ]]; then
+            echo "::error::No Xcode 26 on this runner — the Apple speech helper needs the macOS 26 SDK"
+            exit 1
+          fi
+          sudo xcode-select -s "$XCODE"
+          xcrun swiftc --version
+
+      - name: Build Apple speech helper
+        run: bash scripts/build-apple-speech.sh
+
       - name: Build unpacked app
         run: npx electron-builder --mac --arm64 --dir --publish never -c.mac.notarize=false
         env:

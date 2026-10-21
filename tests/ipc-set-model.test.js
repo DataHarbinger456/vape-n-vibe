@@ -2,7 +2,7 @@
  * Tests for the set-model IPC handler in src/main/ipc.js: key validation
  * against the registry, store persistence, and engine stop/start on switch.
  */
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -97,7 +97,9 @@ for (const [dep, exports] of Object.entries(stubs)) {
 
 const ipcPath = require.resolve(path.resolve(__dirname, "../src/main/ipc.js"));
 delete require.cache[ipcPath];
-const { registerIpcHandlers } = require(ipcPath);
+const { registerIpcHandlers, expectRecordedAudio, recordingFailed } = require(
+  ipcPath,
+);
 registerIpcHandlers({ main: null, overlay: null });
 
 const validEvent = {
@@ -159,5 +161,41 @@ describe("set-model", () => {
     expect(fakeStore.set).not.toHaveBeenCalled();
     expect(stopServer).not.toHaveBeenCalled();
     expect(stopParakeet).not.toHaveBeenCalled();
+  });
+});
+
+describe("recording watchdog", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  const watchdogWarned = () =>
+    console.warn.mock.calls.some((c) =>
+      String(c[0]).includes("no audio arrived"),
+    );
+
+  it("logs when a stopped recording never sends audio", () => {
+    expectRecordedAudio();
+    vi.advanceTimersByTime(5000);
+    expect(watchdogWarned()).toBe(true);
+  });
+
+  it("stays quiet when the audio arrives", async () => {
+    expectRecordedAudio();
+    await handlers["audio-recorded"](validEvent, new ArrayBuffer(44));
+    vi.advanceTimersByTime(5000);
+    expect(watchdogWarned()).toBe(false);
+  });
+
+  it("stays quiet when the window reports an error instead", () => {
+    expectRecordedAudio();
+    recordingFailed();
+    vi.advanceTimersByTime(5000);
+    expect(watchdogWarned()).toBe(false);
   });
 });

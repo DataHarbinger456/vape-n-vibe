@@ -29,6 +29,9 @@ contextBridge.exposeInMainWorld("vapenvibe", {
   sendAudio: (wavBuffer) => ipcRenderer.invoke("audio-recorded", wavBuffer),
   sendPartialAudio: (wavBuffer) =>
     ipcRenderer.invoke("audio-partial", wavBuffer),
+  startAudioStream: () => ipcRenderer.invoke("audio-stream-start"),
+  sendAudioStreamChunk: (pcmBuffer) =>
+    ipcRenderer.send("audio-stream-chunk", pcmBuffer),
   onPartialText: (cb) => {
     const handler = (_e, text) => cb(text);
     ipcRenderer.on("partial-text", handler);
@@ -45,6 +48,8 @@ contextBridge.exposeInMainWorld("vapenvibe", {
   sendVizFreq: (data) => ipcRenderer.send("viz-freq", data),
   getDictionary: () => ipcRenderer.invoke("get-dictionary"),
   setDictionary: (words) => ipcRenderer.invoke("set-dictionary", words),
+  getCorrections: () => ipcRenderer.invoke("get-corrections"),
+  setCorrections: (rules) => ipcRenderer.invoke("set-corrections", rules),
   restartApp: () => ipcRenderer.invoke("restart-app"),
   checkSystemEvents: () => ipcRenderer.invoke("check-system-events"),
   requestSystemEvents: () => ipcRenderer.invoke("request-system-events"),

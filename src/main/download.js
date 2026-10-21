@@ -71,6 +71,10 @@ async function downloadFile(url, destPath, onProgress, expectedHash) {
 /** Whether every file of a model is present on disk. */
 function modelExists(modelKey) {
   const model = defaults.getModel(modelKey);
+  if (model.systemManaged) {
+    // Apple engine: macOS manages the model; ready when the helper can run.
+    return require("./apple-speech").isAvailable();
+  }
   return model.files.every((f) => f.path && fs.existsSync(f.path));
 }
 
@@ -169,6 +173,14 @@ function startEngineForModel(modelKey) {
       .then(scheduleIdleStop)
       .catch((err) => {
         console.error("[download] Parakeet failed to start:", err.message);
+      });
+  } else if (model.engine === "apple") {
+    // Nothing to keep resident — just make sure macOS has the locale
+    // model so the first dictation doesn't wait on a download.
+    require("./apple-speech")
+      .install(store.get("language"))
+      .catch((err) => {
+        console.error("[download] Apple speech setup failed:", err.message);
       });
   }
 }

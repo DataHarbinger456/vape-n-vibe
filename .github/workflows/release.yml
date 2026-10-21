@@ -72,6 +72,19 @@ jobs:
           mkdir -p ~/.private_keys
           echo "$APPLE_API_KEY" | base64 --decode > ~/.private_keys/AuthKey_N3Z8QG6Z9Q.p8
 
+      - name: Select Xcode 26 (macOS 26 SDK for the Apple speech helper)
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)
+          if [[ -z "$XCODE" ]]; then
+            echo "::error::No Xcode 26 on this runner — the Apple speech helper needs the macOS 26 SDK"
+            exit 1
+          fi
+          sudo xcode-select -s "$XCODE"
+          xcrun swiftc --version
+
+      - name: Build Apple speech helper
+        run: bash scripts/build-apple-speech.sh
+
       - name: Build macOS DMG + ZIP (arm64)
         run: npx electron-builder --mac --arm64 --publish always
         env:

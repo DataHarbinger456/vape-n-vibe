@@ -64,11 +64,29 @@ require.cache[parakeetPath] = {
   },
 };
 
+// Fake Apple engine — controls language support and decode results
+// without spawning the real Swift helper.
+const appleState = { unsupported: new Set(), fileText: "from file" };
+const appleTranscribeWav = vi.fn(async () => appleState.fileText);
+const applePath = require.resolve(
+  path.resolve(__dirname, "../src/main/apple-speech.js"),
+);
+require.cache[applePath] = {
+  id: applePath,
+  filename: applePath,
+  loaded: true,
+  exports: {
+    supportsLanguage: vi.fn((lang) => !appleState.unsupported.has(lang)),
+    transcribeWav: appleTranscribeWav,
+    STREAM_FINISH_MIN_MS: 30000,
+  },
+};
+
 const transcribePath = require.resolve(
   path.resolve(__dirname, "../src/main/transcribe.js"),
 );
 delete require.cache[transcribePath];
-const { getActiveModel, parseOutput, transcribePartial } = require(
+const { getActiveModel, parseOutput, transcribePartial, transcribe } = require(
   transcribePath,
 );
 
@@ -124,9 +142,111 @@ describe("getActiveModel", () => {
     expect(getActiveModel().key).toBe(WHISPER_KEY);
   });
 
+  it("returns apple when selected and available", () => {
+    storeState.selectedModel = "apple-speech";
+    const { key, model } = getActiveModel();
+    expect(key).toBe("apple-speech");
+    expect(model.engine).toBe("apple");
+  });
+
+  it("falls back to whisper when apple speech is unavailable", () => {
+    storeState.selectedModel = "apple-speech";
+    downloadState.exists = false;
+    expect(getActiveModel().key).toBe(WHISPER_KEY);
+  });
+
+  it("capitalises sentence starts in apple output", () => {
+    expect(
+      parseOutput("testing it out. but do have a look! and then? yes", {
+        engine: "apple",
+      }),
+    ).toBe("testing it out. But do have a look! And then? Yes");
+  });
+
+  it("leaves ellipses and abbreviations alone in apple output", () => {
+    expect(
+      parseOutput("well... then, e.g. this and the U.S. army", {
+        engine: "apple",
+      }),
+    ).toBe("well... then, e.g. this and the U.S. army");
+  });
+
+  it("falls back to whisper for languages apple doesn't support", () => {
+    storeState.selectedModel = "apple-speech";
+    appleState.unsupported = new Set(["ar"]);
+    expect(getActiveModel("ar").key).toBe(WHISPER_KEY);
+    expect(getActiveModel("en").key).toBe("apple-speech");
+    appleState.unsupported = new Set();
+  });
+
+  it("does not strip whisper-style hallucination phrases from apple output", () => {
+    expect(parseOutput("Thank you.", { engine: "apple" })).toBe("Thank you.");
+    expect(parseOutput("All good now, thanks.", { engine: "apple" })).toBe(
+      "All good now, thanks.",
+    );
+  });
+
   it("falls back to the default model for unknown keys", () => {
     storeState.selectedModel = "no-such-model";
     expect(getActiveModel().key).toBe(WHISPER_KEY);
+  });
+});
+
+describe("Apple final transcription", () => {
+  // 1s of constant-amplitude tone — clears analyzeWav's hasSpeech check.
+  function makeSpeechWav() {
+    const wav = Buffer.alloc(44 + 16000 * 2);
+    for (let offset = 44; offset < wav.length; offset += 2) {
+      wav.writeInt16LE(5000, offset);
+    }
+    return wav;
+  }
+
+  function makeSession(finish) {
+    return { finish: vi.fn(finish), cancel: vi.fn() };
+  }
+
+  beforeEach(() => {
+    storeState.selectedModel = "apple-speech";
+    storeState.language = "en";
+    downloadState.exists = true;
+    appleState.unsupported = new Set();
+    appleTranscribeWav.mockClear();
+  });
+
+  it("uses the live stream's result without decoding the file", async () => {
+    const session = makeSession(async () => "streamed text");
+    const text = await transcribe("/unused.wav", "en", {
+      rawWav: makeSpeechWav(),
+      streamSession: session,
+    });
+    expect(text).toBe("streamed text");
+    expect(session.finish).toHaveBeenCalledTimes(1);
+    expect(appleTranscribeWav).not.toHaveBeenCalled();
+  });
+
+  it("falls back to a file decode when the stream fails", async () => {
+    const session = makeSession(async () => {
+      throw new Error("helper crashed");
+    });
+    const text = await transcribe("/unused.wav", "en", {
+      rawWav: makeSpeechWav(),
+      streamSession: session,
+    });
+    expect(text).toBe("from file");
+    expect(appleTranscribeWav).toHaveBeenCalledTimes(1);
+  });
+
+  it("cancels an unused stream when the audio is silent", async () => {
+    const session = makeSession(async () => "never");
+    const silent = Buffer.alloc(44 + 16000 * 2);
+    const text = await transcribe("/unused.wav", "en", {
+      rawWav: silent,
+      streamSession: session,
+    });
+    expect(text).toBe("");
+    expect(session.finish).not.toHaveBeenCalled();
+    expect(session.cancel).toHaveBeenCalled();
   });
 });
 

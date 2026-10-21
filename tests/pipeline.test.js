@@ -195,3 +195,52 @@ describe("runPipeline — normal speech clip", () => {
     expect(overlayCalls[overlayCalls.length - 1]).toBe("idle");
   });
 });
+
+describe("runPipeline — corrections and live stream", () => {
+  it("applies dictionary corrections before pasting", async () => {
+    const storeMod = nodeRequire("../src/main/store");
+    const pasteMod = nodeRequire("../src/main/paste");
+    const originalGet = storeMod.get;
+    const originalPaste = pasteMod.pasteText;
+    const pasteText = vi.fn(() => Promise.resolve());
+    pasteMod.pasteText = pasteText;
+    storeMod.get = (key) =>
+      key === "corrections"
+        ? [{ from: "whispering parakeet", to: "Whisper and Parakeet" }]
+        : "auto";
+    transcribeMod.transcribe = vi.fn(() =>
+      Promise.resolve("compare whispering parakeet"),
+    );
+    try {
+      await runPipeline(SPEECH_WAV, {
+        sendStatus: vi.fn(),
+        sendOverlay: vi.fn(),
+      });
+      expect(pasteText).toHaveBeenCalledWith("compare Whisper and Parakeet");
+    } finally {
+      storeMod.get = originalGet;
+      pasteMod.pasteText = originalPaste;
+    }
+  });
+
+  it("passes the live stream session through to transcribe", async () => {
+    const session = { finish: vi.fn(), cancel: vi.fn() };
+    await runPipeline(SPEECH_WAV, {
+      sendStatus: vi.fn(),
+      sendOverlay: vi.fn(),
+      streamSession: session,
+    });
+    expect(transcribeSpy.mock.calls[0][2].streamSession).toBe(session);
+  });
+
+  it("cancels the live stream when the clip is silent", async () => {
+    const session = { finish: vi.fn(), cancel: vi.fn() };
+    await runPipeline(SILENT_WAV, {
+      sendStatus: vi.fn(),
+      sendOverlay: vi.fn(),
+      streamSession: session,
+    });
+    expect(session.cancel).toHaveBeenCalled();
+    expect(transcribeSpy).not.toHaveBeenCalled();
+  });
+});

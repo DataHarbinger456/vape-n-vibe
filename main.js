@@ -29,11 +29,14 @@ const {
   getWin,
   sendToOverlay,
   validateSender,
+  expectRecordedAudio,
+  recordingFailed,
 } = require("./src/main/ipc");
 const { createTray } = require("./src/main/tray");
 const store = require("./src/main/store");
 const { stopServer } = require("./src/main/whisper-server");
 const { modelExists, startEngineForModel } = require("./src/main/download");
+const { applyAppleDefault } = require("./src/main/model-default");
 
 // --- Global error handlers ---
 process.on("unhandledRejection", (reason) => {
@@ -59,6 +62,12 @@ app.whenReady().then(() => {
   }
 
   defaults.resolveModelPaths();
+
+  // Prefer Apple's on-device engine where it can run (macOS 26+).
+  const appleSpeech = require("./src/main/apple-speech");
+  const appleAvailable = appleSpeech.isAvailable();
+  applyAppleDefault(store, { appleAvailable });
+  if (appleAvailable) appleSpeech.loadSupportedLanguages();
 
   // Start the selected model's engine if its files exist (non-blocking)
   const selectedModel = store.get("selectedModel") || defaults.defaultModel;
@@ -105,6 +114,7 @@ app.whenReady().then(() => {
       if (win) {
         win.webContents.send("recording-toggle", false);
       }
+      expectRecordedAudio();
       try {
         if (defaults.recording.muteWhileRecording) await unmuteSystem();
       } catch (err) {
@@ -120,6 +130,7 @@ app.whenReady().then(() => {
       `[main] Renderer reported recording error, resetting state${detail ? ` (${detail})` : ""}`,
     );
     recording = false;
+    recordingFailed();
     sendToOverlay("viz-mode", "idle");
   });
 

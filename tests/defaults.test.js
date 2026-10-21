@@ -6,9 +6,10 @@ describe("defaults", () => {
     expect(Object.keys(defaults.models).length).toBeGreaterThan(0);
     for (const [key, model] of Object.entries(defaults.models)) {
       expect(key).toBeTruthy();
-      expect(model.engine).toMatch(/^(whisper|parakeet)$/);
+      expect(model.engine).toMatch(/^(whisper|parakeet|apple)$/);
       expect(model.label).toBeDefined();
-      expect(model.files.length).toBeGreaterThan(0);
+      // System-managed models (Apple) have no downloadable files.
+      if (!model.systemManaged) expect(model.files.length).toBeGreaterThan(0);
       for (const f of model.files) {
         expect(f.file).toBeDefined();
         expect(f.url).toMatch(/^https:\/\//);
