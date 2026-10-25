@@ -4,7 +4,7 @@ const defaults = {
   // Window
   window: {
     width: 400,
-    height: 470,
+    height: 508,
   },
 
   // Model registry — every selectable transcription model.
@@ -160,6 +160,8 @@ const defaults = {
 
   // Hotkey — fn on macOS, Ctrl+Space on Windows/Linux
   hotkey: process.platform === "darwin" ? "fn" : "Ctrl+Space",
+  // "hold" = push-to-talk; "toggle" = tap once to start, tap again to stop
+  hotkeyMode: "hold",
 
   // Paths — resolved lazily via resolveModelPaths() after app.whenReady()
   paths: {

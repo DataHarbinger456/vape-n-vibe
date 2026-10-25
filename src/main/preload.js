@@ -3,6 +3,21 @@ const { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("vapenvibe", {
   getConfig: () => ipcRenderer.invoke("get-config"),
   setHotkey: (hotkey) => ipcRenderer.invoke("set-hotkey", hotkey),
+  setHotkeyMode: (mode) => ipcRenderer.invoke("set-hotkey-mode", mode),
+  getHistory: () => ipcRenderer.invoke("get-history"),
+  copyHistoryEntry: (id) => ipcRenderer.invoke("copy-history-entry", id),
+  deleteHistoryEntry: (id) => ipcRenderer.invoke("delete-history-entry", id),
+  clearHistory: () => ipcRenderer.invoke("clear-history"),
+  onHistoryUpdated: (cb) => {
+    const handler = () => cb();
+    ipcRenderer.on("history-updated", handler);
+    return () => ipcRenderer.removeListener("history-updated", handler);
+  },
+  onShowHistory: (cb) => {
+    const handler = () => cb();
+    ipcRenderer.on("show-history", handler);
+    return () => ipcRenderer.removeListener("show-history", handler);
+  },
   setLanguage: (lang) => ipcRenderer.invoke("set-language", lang),
   setModel: (key) => ipcRenderer.invoke("set-model", key),
   startDownloads: (modelKey) => ipcRenderer.invoke("start-downloads", modelKey),

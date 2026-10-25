@@ -10,6 +10,8 @@ const transcribeMod = require("./transcribe");
 // Module object (not destructured) for the same reason as transcribeMod.
 const pasteMod = require("./paste");
 const { correctTranscript } = require("./corrections");
+// Module object for the same reason as transcribeMod.
+const historyMod = require("./history");
 
 async function runPipeline(
   wavBuffer,
@@ -54,6 +56,13 @@ async function runPipeline(
     sendOverlay("idle");
 
     if (text && text.trim()) {
+      // Saved before pasting so the transcript survives a failed paste
+      // (pasteText restores the previous clipboard afterwards).
+      try {
+        historyMod.add(text);
+      } catch (err) {
+        console.error("[pipeline] Saving to history failed:", err.message);
+      }
       try {
         await pasteMod.pasteText(text.trim());
       } catch (err) {

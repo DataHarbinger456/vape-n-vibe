@@ -1,6 +1,12 @@
 const { execFile } = require("node:child_process");
 const { promisify } = require("node:util");
-const { app, ipcMain, BrowserWindow, systemPreferences } = require("electron");
+const {
+  app,
+  ipcMain,
+  BrowserWindow,
+  systemPreferences,
+  clipboard,
+} = require("electron");
 const defaults = require("../config/defaults");
 const store = require("./store");
 const { downloadModels, modelExists } = require("./download");
@@ -8,8 +14,10 @@ const {
   updateHotkey,
   checkAccessibility,
   requestAccessibility,
+  HOTKEY_MODES,
 } = require("./hotkey");
 const { runPipeline } = require("./pipeline");
+const history = require("./history");
 const { restartServer, isReady, stopServer } = require("./whisper-server");
 const { stopParakeet } = require("./parakeet");
 const { transcribePartial, cancelActivePartial } = require("./transcribe");
@@ -110,6 +118,7 @@ function registerIpcHandlers(windows) {
         })),
       selectedModel,
       hotkey: store.get("hotkey"),
+      hotkeyMode: store.get("hotkeyMode"),
       modelExists: modelExists(selectedModel),
       accessibilityGranted: checkAccessibility(),
       microphoneGranted:
@@ -127,6 +136,45 @@ function registerIpcHandlers(windows) {
     if (!validateSender(event.senderFrame)) return false;
     store.set("hotkey", hotkey);
     updateHotkey(hotkey);
+    return true;
+  });
+
+  // --- Transcript history ---
+  history.onChange(() => {
+    const win = getWin();
+    if (win) win.webContents.send("history-updated");
+  });
+
+  ipcMain.handle("get-history", (event) => {
+    if (!validateSender(event.senderFrame)) return [];
+    return history.list();
+  });
+
+  ipcMain.handle("copy-history-entry", (event, id) => {
+    if (!validateSender(event.senderFrame)) return false;
+    if (typeof id !== "string") return false;
+    const entry = history.find(id);
+    if (!entry) return false;
+    clipboard.writeText(entry.text);
+    return true;
+  });
+
+  ipcMain.handle("delete-history-entry", (event, id) => {
+    if (!validateSender(event.senderFrame)) return false;
+    if (typeof id !== "string") return false;
+    return history.remove(id);
+  });
+
+  ipcMain.handle("clear-history", (event) => {
+    if (!validateSender(event.senderFrame)) return false;
+    history.clear();
+    return true;
+  });
+
+  ipcMain.handle("set-hotkey-mode", (event, mode) => {
+    if (!validateSender(event.senderFrame)) return false;
+    if (!HOTKEY_MODES.includes(mode)) return false;
+    store.set("hotkeyMode", mode);
     return true;
   });
 

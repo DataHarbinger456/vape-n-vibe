@@ -64,6 +64,16 @@
         <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
         <rect x="9" y="2" width="6" height="13" rx="3" />
       </symbol>
+      <symbol id="i-copy" viewBox="0 0 24 24">
+        <rect x="8" y="8" width="14" height="14" rx="2" />
+        <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+      </symbol>
+      <symbol id="i-keyboard" viewBox="0 0 24 24">
+        <path
+          d="M10 8h.01M12 12h.01M14 8h.01M16 12h.01M18 8h.01M6 8h.01M7 16h10M8 12h.01"
+        />
+        <rect x="2" y="4" width="20" height="16" rx="2" />
+      </symbol>
       <symbol id="i-globe" viewBox="0 0 24 24">
         <circle cx="12" cy="12" r="10" />
         <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
@@ -105,6 +115,14 @@
         <div class="menu-dropdown hidden" id="menu-dropdown" role="menu">
           <button
             class="menu-item"
+            id="menu-history"
+            type="button"
+            role="menuitem"
+          >
+            History
+          </button>
+          <button
+            class="menu-item"
             id="menu-permissions"
             type="button"
             role="menuitem"
@@ -141,6 +159,16 @@
       </section>
 
       <section class="deck" aria-label="Settings">
+        <div class="row">
+          <svg class="ic" aria-hidden="true">
+            <use href="#i-keyboard"></use>
+          </svg>
+          <label class="row-label" for="mode-select">Shortcut</label>
+          <select class="row-select" id="mode-select">
+            <option value="hold">Hold to talk</option>
+            <option value="toggle">Tap to start / stop</option>
+          </select>
+        </div>
         <div class="row">
           <svg class="ic" aria-hidden="true"><use href="#i-mic"></use></svg>
           <label class="row-label" for="mic-select">Microphone</label>
@@ -265,6 +293,21 @@
           </button>
         </div>
       </div>
+    </div>
+
+    <div class="view hidden" id="history-view">
+      <div class="view-head">
+        <h2 class="view-title" id="history-title">History</h2>
+        <button class="pill-btn hidden" id="history-clear" type="button">
+          Clear all
+        </button>
+      </div>
+      <ul
+        class="deck history-list"
+        id="history-list"
+        aria-labelledby="history-title"
+      ></ul>
+      <p class="sr-only" id="history-status" aria-live="polite"></p>
     </div>
 
     <div class="pop hidden" id="dictionary-modal">

@@ -21,7 +21,11 @@ if (app.isPackaged) {
 app.setName("Vaper");
 const { createWindow, createOverlay } = require("./src/main/window");
 const defaults = require("./src/config/defaults");
-const { registerHotkey, stopHotkey } = require("./src/main/hotkey");
+const {
+  registerHotkey,
+  stopHotkey,
+  pressAction,
+} = require("./src/main/hotkey");
 const { muteSystem, unmuteSystem } = require("./src/main/audio-control");
 const { initUpdater } = require("./src/main/updater");
 const {
@@ -87,40 +91,53 @@ app.whenReady().then(() => {
   const hotkey = store.get("hotkey");
   console.log("[main] Setting up hotkey:", hotkey);
 
+  const startRecording = async () => {
+    if (recording) return;
+    recording = true;
+    console.log("[main] Recording started");
+    // Send IPC immediately — before any async work — so message
+    // ordering is guaranteed even on rapid taps.
+    sendToOverlay("viz-mode", "recording");
+    const win = getWin();
+    if (win) win.webContents.send("recording-toggle", true);
+    try {
+      if (defaults.recording.muteWhileRecording) await muteSystem();
+    } catch (err) {
+      console.error("[main] Mute failed:", err.message);
+    }
+  };
+
+  const stopRecording = async () => {
+    if (!recording) return;
+    recording = false;
+    console.log("[main] Recording stopped");
+    // Send IPC immediately — before any async work — so the renderer
+    // always receives stop after start, never reversed.
+    sendToOverlay("viz-mode", "idle");
+    const win = getWin();
+    if (win) {
+      win.webContents.send("recording-toggle", false);
+    }
+    expectRecordedAudio();
+    try {
+      if (defaults.recording.muteWhileRecording) await unmuteSystem();
+    } catch (err) {
+      console.error("[main] Unmute failed:", err.message);
+    }
+  };
+
+  // Hold mode starts on key down and stops on key up; toggle mode flips on
+  // each key down. The mode is read per press so a settings change applies
+  // immediately without re-registering the hotkey.
+  const onEdge = (edge) => {
+    const action = pressAction(store.get("hotkeyMode"), recording, edge);
+    if (action === "start") return startRecording();
+    if (action === "stop") return stopRecording();
+  };
+
   registerHotkey(hotkey, {
-    onDown: async () => {
-      if (recording) return;
-      recording = true;
-      console.log("[main] Recording started");
-      // Send IPC immediately — before any async work — so message
-      // ordering is guaranteed even on rapid taps.
-      sendToOverlay("viz-mode", "recording");
-      const win = getWin();
-      if (win) win.webContents.send("recording-toggle", true);
-      try {
-        if (defaults.recording.muteWhileRecording) await muteSystem();
-      } catch (err) {
-        console.error("[main] Mute failed:", err.message);
-      }
-    },
-    onUp: async () => {
-      if (!recording) return;
-      recording = false;
-      console.log("[main] Recording stopped");
-      // Send IPC immediately — before any async work — so the renderer
-      // always receives stop after start, never reversed.
-      sendToOverlay("viz-mode", "idle");
-      const win = getWin();
-      if (win) {
-        win.webContents.send("recording-toggle", false);
-      }
-      expectRecordedAudio();
-      try {
-        if (defaults.recording.muteWhileRecording) await unmuteSystem();
-      } catch (err) {
-        console.error("[main] Unmute failed:", err.message);
-      }
-    },
+    onDown: () => onEdge("down"),
+    onUp: () => onEdge("up"),
   });
 
   // Reset recording state if renderer fails to start recording

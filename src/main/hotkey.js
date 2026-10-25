@@ -255,6 +255,25 @@ function startUiohook() {
   console.log("[hotkey] uiohook started");
 }
 
+// --- Hold vs toggle mode ---
+const HOTKEY_MODES = ["hold", "toggle"];
+
+/**
+ * Map a physical hotkey edge ("down" | "up") to a recording action.
+ * hold: down starts, up stops. toggle: each down flips, up is ignored.
+ * Decided from the caller's real recording state (not a local flag) so a
+ * renderer-side reset never leaves toggle mode one tap out of sync.
+ * @returns {"start" | "stop" | null}
+ */
+function pressAction(mode, recording, edge) {
+  if (mode === "toggle") {
+    if (edge !== "down") return null;
+    return recording ? "stop" : "start";
+  }
+  if (edge === "down") return recording ? null : "start";
+  return recording ? "stop" : null;
+}
+
 // --- Public API ---
 function checkAccessibility() {
   if (process.platform !== "darwin") return true;
@@ -354,4 +373,6 @@ module.exports = {
   matchesDown,
   matchesUp,
   toAccelerator,
+  HOTKEY_MODES,
+  pressAction,
 };

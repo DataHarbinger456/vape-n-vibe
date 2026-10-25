@@ -13,6 +13,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   const downloadBar = document.getElementById("download-bar");
   const micSelect = document.getElementById("mic-select");
   const langSelect = document.getElementById("lang-select");
+  const modeSelect = document.getElementById("mode-select");
   const modelSelect = document.getElementById("model-select");
   // Words are a Whisper spelling prompt; other engines only use corrections.
   const dictionarySections = document.getElementById("dictionary-sections");
@@ -107,6 +108,9 @@ window.addEventListener("DOMContentLoaded", async () => {
   const backBtn = document.getElementById("back-btn");
   const mainView = document.getElementById("main-view");
   const permissionsView = document.getElementById("permissions-view");
+  const historyView = document.getElementById("history-view");
+  const menuHistory = document.getElementById("menu-history");
+  const subViews = [permissionsView, historyView];
 
   function isMenuOpen() {
     return (
@@ -122,19 +126,24 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   function showMainView() {
     mainView.classList.remove("hidden");
-    permissionsView.classList.add("hidden");
+    subViews.forEach((v) => v.classList.add("hidden"));
     logo.classList.remove("hidden");
     backBtn.classList.add("hidden");
     versionBadge.classList.remove("hidden");
   }
 
-  function showPermissionsView() {
+  /** Swap the settings page for one of the menu's pages. */
+  function showSubView(view) {
     mainView.classList.add("hidden");
-    permissionsView.classList.remove("hidden");
+    subViews.forEach((v) => v.classList.toggle("hidden", v !== view));
     logo.classList.add("hidden");
     backBtn.classList.remove("hidden");
     versionBadge.classList.add("hidden");
     closeMenuDropdown();
+  }
+
+  function showPermissionsView() {
+    showSubView(permissionsView);
   }
 
   function toggleMenuDropdown() {
@@ -144,7 +153,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
     showAnimated(menuDropdown);
     menuBtn.setAttribute("aria-expanded", "true");
-    menuPermissions.focus();
+    menuHistory.focus();
   }
 
   menuBtn.addEventListener("click", (e) => {
@@ -153,6 +162,8 @@ window.addEventListener("DOMContentLoaded", async () => {
   });
 
   menuPermissions.addEventListener("click", showPermissionsView);
+  // showHistoryView is defined with the history list below.
+  menuHistory.addEventListener("click", () => showHistoryView());
 
   backBtn.addEventListener("click", showMainView);
 
@@ -170,6 +181,29 @@ window.addEventListener("DOMContentLoaded", async () => {
     if (e.key === "Escape" && isMenuOpen()) {
       closeMenuDropdown();
       menuBtn.focus();
+    }
+  });
+
+  // Arrow keys move between menu items.
+  menuDropdown.addEventListener("keydown", (e) => {
+    if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+    e.preventDefault();
+    const items = Array.from(menuDropdown.querySelectorAll(".menu-item"));
+    const i = items.indexOf(document.activeElement);
+    const step = e.key === "ArrowDown" ? 1 : -1;
+    items[(i + step + items.length) % items.length].focus();
+  });
+
+  // --- Shortcut mode (hold vs tap to toggle) ---
+  let hotkeyMode = config.hotkeyMode === "toggle" ? "toggle" : "hold";
+  modeSelect.value = hotkeyMode;
+  modeSelect.addEventListener("change", async () => {
+    const ok = await window.vapenvibe.setHotkeyMode(modeSelect.value);
+    if (ok) {
+      hotkeyMode = modeSelect.value;
+      refreshHero();
+    } else {
+      modeSelect.value = hotkeyMode;
     }
   });
 
@@ -757,9 +791,10 @@ window.addEventListener("DOMContentLoaded", async () => {
     const state = listening ? "listening" : mood;
     const labels = {
       listening: "Press a new shortcut",
-      recording: "Listening",
+      recording:
+        hotkeyMode === "toggle" ? "Listening \u2014 tap to stop" : "Listening",
       processing: "Transcribing\u2026",
-      idle: "Hold to talk",
+      idle: hotkeyMode === "toggle" ? "Tap to talk" : "Hold to talk",
     };
     document.body.dataset.state = state;
     if (holdStatus.textContent !== labels[state]) {
@@ -771,6 +806,151 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
     window.vaperHero.setMood(mood);
   }
+
+  // --- Transcript history ---
+  const historyList = document.getElementById("history-list");
+  const historyClear = document.getElementById("history-clear");
+  const historyStatus = document.getElementById("history-status");
+  let historyEntries = [];
+  let clearArmedTimer = null;
+
+  const timeFormat = new Intl.DateTimeFormat(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  const dateFormat = new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+  });
+
+  function formatWhen(timestamp) {
+    const when = new Date(timestamp);
+    const today = new Date();
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+    const time = timeFormat.format(when);
+    if (when.toDateString() === today.toDateString()) return time;
+    if (when.toDateString() === yesterday.toDateString()) {
+      return `Yesterday, ${time}`;
+    }
+    return `${dateFormat.format(when)}, ${time}`;
+  }
+
+  function announce(message) {
+    historyStatus.textContent = "";
+    // A fresh node change makes screen readers repeat identical messages.
+    requestAnimationFrame(() => {
+      historyStatus.textContent = message;
+    });
+  }
+
+  function createCopyButton(entry, when) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "remove-btn copy-btn";
+    btn.setAttribute("aria-label", `Copy transcript from ${when}`);
+    const svg = document.createElementNS(svgNs, "svg");
+    svg.setAttribute("class", "ic");
+    svg.setAttribute("aria-hidden", "true");
+    const use = document.createElementNS(svgNs, "use");
+    use.setAttribute("href", "#i-copy");
+    svg.appendChild(use);
+    btn.appendChild(svg);
+    let revert = null;
+    btn.addEventListener("click", async () => {
+      const ok = await window.vapenvibe.copyHistoryEntry(entry.id);
+      if (!ok) {
+        announce("That transcript is no longer in history");
+        return;
+      }
+      use.setAttribute("href", "#i-check");
+      btn.classList.add("is-copied");
+      announce("Copied to clipboard");
+      clearTimeout(revert);
+      revert = setTimeout(() => {
+        use.setAttribute("href", "#i-copy");
+        btn.classList.remove("is-copied");
+      }, 1500);
+    });
+    return btn;
+  }
+
+  function renderHistory() {
+    historyList.innerHTML = "";
+    historyClear.classList.toggle("hidden", historyEntries.length === 0);
+    if (historyEntries.length === 0) {
+      renderEmptyList(historyList, "No transcripts yet");
+      return;
+    }
+    historyEntries.forEach((entry, i) => {
+      const when = formatWhen(entry.timestamp);
+      const li = document.createElement("li");
+      li.className = "history-item";
+      const copy = document.createElement("div");
+      copy.className = "history-copy";
+      const text = document.createElement("p");
+      text.className = "history-text";
+      text.textContent = entry.text;
+      text.title = entry.text;
+      const meta = document.createElement("p");
+      meta.className = "history-when";
+      meta.textContent = when;
+      copy.append(text, meta);
+      const del = createRemoveButton(
+        `Delete transcript from ${when}`,
+        async () => {
+          await window.vapenvibe.deleteHistoryEntry(entry.id);
+          historyEntries = historyEntries.filter((e) => e.id !== entry.id);
+          renderHistory();
+          announce("Transcript deleted");
+          const dels = historyList.querySelectorAll(".history-del");
+          (dels[Math.min(i, dels.length - 1)] || backBtn).focus();
+        },
+      );
+      del.classList.add("history-del");
+      li.append(copy, createCopyButton(entry, when), del);
+      historyList.appendChild(li);
+    });
+  }
+
+  async function loadHistory() {
+    historyEntries = (await window.vapenvibe.getHistory()) || [];
+    renderHistory();
+  }
+
+  function disarmClear() {
+    clearTimeout(clearArmedTimer);
+    clearArmedTimer = null;
+    historyClear.textContent = "Clear all";
+    historyClear.classList.remove("primary");
+  }
+
+  // Clearing is permanent, so the first press asks for a second one.
+  historyClear.addEventListener("click", async () => {
+    if (!clearArmedTimer) {
+      historyClear.textContent = "Confirm clear";
+      historyClear.classList.add("primary");
+      clearArmedTimer = setTimeout(disarmClear, 3000);
+      return;
+    }
+    disarmClear();
+    await window.vapenvibe.clearHistory();
+    historyEntries = [];
+    renderHistory();
+    announce("History cleared");
+    backBtn.focus();
+  });
+
+  async function showHistoryView() {
+    disarmClear();
+    showSubView(historyView);
+    await loadHistory();
+  }
+
+  window.vapenvibe.onHistoryUpdated(() => {
+    if (!historyView.classList.contains("hidden")) loadHistory();
+  });
+  window.vapenvibe.onShowHistory(() => showHistoryView());
 
   // --- Audio recording (push-to-talk) ---
   let audioContext = null;
