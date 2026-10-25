@@ -15,7 +15,7 @@ const historyMod = require("./history");
 
 async function runPipeline(
   wavBuffer,
-  { sendStatus, sendOverlay, streamSession = null },
+  { sendStatus, sendOverlay, streamSession = null, isCancelled = () => false },
 ) {
   const buf = Buffer.from(wavBuffer);
 
@@ -50,6 +50,10 @@ async function runPipeline(
       streamSession,
     });
     text = correctTranscript(text, store.get("corrections"));
+    if (isCancelled()) {
+      console.log("[pipeline] Dictation cancelled, not pasting");
+      return;
+    }
     console.log("[pipeline] Transcription result:", text);
 
     sendStatus("idle");

@@ -244,3 +244,35 @@ describe("runPipeline — corrections and live stream", () => {
     expect(transcribeSpy).not.toHaveBeenCalled();
   });
 });
+
+describe("runPipeline — Esc cancel", () => {
+  it("neither pastes nor saves history once the dictation is cancelled", async () => {
+    const pasteMod = nodeRequire("../src/main/paste");
+    const historyMod = nodeRequire("../src/main/history");
+    const originalPaste = pasteMod.pasteText;
+    const originalAdd = historyMod.add;
+    const pasteText = vi.fn(() => Promise.resolve());
+    const addHistory = vi.fn();
+    pasteMod.pasteText = pasteText;
+    historyMod.add = addHistory;
+    let cancelled = false;
+    transcribeMod.transcribe = vi.fn(async () => {
+      cancelled = true; // Esc pressed while transcribing
+      return "never pasted";
+    });
+    const sendStatus = vi.fn();
+    try {
+      await runPipeline(SPEECH_WAV, {
+        sendStatus,
+        sendOverlay: vi.fn(),
+        isCancelled: () => cancelled,
+      });
+      expect(pasteText).not.toHaveBeenCalled();
+      expect(addHistory).not.toHaveBeenCalled();
+      expect(sendStatus).not.toHaveBeenCalledWith("idle");
+    } finally {
+      pasteMod.pasteText = originalPaste;
+      historyMod.add = originalAdd;
+    }
+  });
+});

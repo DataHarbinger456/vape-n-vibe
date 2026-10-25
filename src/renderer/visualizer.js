@@ -204,6 +204,10 @@
       clearConfirm();
       if (!recordEnd) recordEnd = performance.now();
       show("processing");
+    } else if (newMode === "cancelled") {
+      // Esc: close the pill straight away — nothing will be pasted.
+      clearConfirm();
+      show("idle");
     } else if (mode === "recording") {
       // Key released: assume the pipeline will pick this up.
       recordEnd = performance.now();

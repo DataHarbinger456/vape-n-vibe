@@ -982,6 +982,8 @@ window.addEventListener("DOMContentLoaded", async () => {
   let isRecording = false;
   let capturing = false;
   let streaming = false;
+  // Main's id for the dictation being recorded, sent back with its audio.
+  let dictationId = null;
 
   async function createAudioContext() {
     const ctx = new AudioContext({ sampleRate: 16000 });
@@ -1171,9 +1173,10 @@ window.addEventListener("DOMContentLoaded", async () => {
     window.vapenvibe.sendPartialAudio(wavBuf);
   }
 
-  async function startRecording() {
+  async function startRecording(id) {
     if (isRecording) return;
     isRecording = true;
+    dictationId = id;
     audioChunks = [];
     streamSentIdx = 0;
     streaming = false;
@@ -1229,6 +1232,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   async function stopRecording() {
     if (!isRecording) return;
     isRecording = false;
+    const id = dictationId;
     hero.recording = false;
     hero.transcribing = true;
     refreshHero();
@@ -1259,8 +1263,24 @@ window.addEventListener("DOMContentLoaded", async () => {
     audioChunks = [];
 
     const wavBuffer = encodeWav(pcm, 16000);
-    await window.vapenvibe.sendAudio(wavBuffer);
-    // The pipeline has finished (pasted, skipped as silent, or failed).
+    await window.vapenvibe.sendAudio(wavBuffer, id);
+    // The pipeline has finished (pasted, skipped as silent, failed or
+    // cancelled).
+    hero.transcribing = false;
+    refreshHero();
+  }
+
+  // Esc pressed during a dictation: stop capturing and throw the audio
+  // away. Main drops anything already sent, so nothing gets pasted.
+  function cancelRecording() {
+    if (isRecording) {
+      isRecording = false;
+      streaming = false;
+      pauseCapture();
+      audioChunks = [];
+      window.vaperHero.setFreq(null);
+    }
+    hero.recording = false;
     hero.transcribing = false;
     refreshHero();
   }
@@ -1305,11 +1325,11 @@ window.addEventListener("DOMContentLoaded", async () => {
   let recordingOp = Promise.resolve();
 
   // Listen for push-to-talk from main process
-  window.vapenvibe.onRecordingToggle((on) => {
+  window.vapenvibe.onRecordingToggle((on, id) => {
     recordingOp = recordingOp
       .then(async () => {
         if (on) {
-          await startRecording();
+          await startRecording(id);
         } else {
           await stopRecording();
         }
@@ -1328,6 +1348,13 @@ window.addEventListener("DOMContentLoaded", async () => {
         // the main process log, so this is the only diagnosable trace.
         window.vapenvibe.sendRecordingError(`${err.name}: ${err.message}`);
       });
+  });
+
+  // Esc from main — queued like start/stop so it can't interleave with them.
+  window.vapenvibe.onRecordingCancel(() => {
+    recordingOp = recordingOp.then(cancelRecording).catch((err) => {
+      console.error("[renderer] Cancel failed:", err);
+    });
   });
 
   // Transcription status indicator

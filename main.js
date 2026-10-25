@@ -33,8 +33,10 @@ const {
   getWin,
   sendToOverlay,
   validateSender,
+  beginDictation,
   expectRecordedAudio,
   recordingFailed,
+  cancelDictations,
 } = require("./src/main/ipc");
 const { createTray } = require("./src/main/tray");
 const store = require("./src/main/store");
@@ -82,7 +84,7 @@ app.whenReady().then(() => {
   windows.main = createWindow();
   windows.overlay = createOverlay();
 
-  registerIpcHandlers(windows);
+  registerIpcHandlers(windows, { onCancel: () => cancelDictation() });
   initUpdater(windows);
 
   windows.tray = createTray(windows);
@@ -94,12 +96,13 @@ app.whenReady().then(() => {
   const startRecording = async () => {
     if (recording) return;
     recording = true;
+    const dictationId = beginDictation();
     console.log("[main] Recording started");
     // Send IPC immediately — before any async work — so message
     // ordering is guaranteed even on rapid taps.
     sendToOverlay("viz-mode", "recording");
     const win = getWin();
-    if (win) win.webContents.send("recording-toggle", true);
+    if (win) win.webContents.send("recording-toggle", true, dictationId);
     try {
       if (defaults.recording.muteWhileRecording) await muteSystem();
     } catch (err) {
@@ -123,6 +126,23 @@ app.whenReady().then(() => {
       if (defaults.recording.muteWhileRecording) await unmuteSystem();
     } catch (err) {
       console.error("[main] Unmute failed:", err.message);
+    }
+  };
+
+  // Esc during a dictation (recording or transcribing): stop, and drop the
+  // audio and any transcript in progress so nothing gets pasted.
+  const cancelDictation = () => {
+    const wasRecording = recording;
+    recording = false;
+    console.log("[main] Dictation cancelled");
+    cancelDictations();
+    sendToOverlay("viz-mode", "cancelled");
+    const win = getWin();
+    if (win) win.webContents.send("recording-cancel");
+    if (wasRecording && defaults.recording.muteWhileRecording) {
+      unmuteSystem().catch((err) => {
+        console.error("[main] Unmute failed:", err.message);
+      });
     }
   };
 

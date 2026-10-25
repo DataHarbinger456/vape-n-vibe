@@ -58,6 +58,7 @@ require.cache[storePath] = {
 
 const stopServer = vi.fn();
 const stopParakeet = vi.fn();
+const runPipeline = vi.fn(async () => {});
 const startEngineForModel = vi.fn();
 const modelExists = vi.fn(() => true);
 
@@ -72,7 +73,7 @@ const stubs = {
     checkAccessibility: vi.fn(() => false),
     requestAccessibility: vi.fn(),
   },
-  "../src/main/pipeline.js": { runPipeline: vi.fn() },
+  "../src/main/pipeline.js": { runPipeline },
   "../src/main/whisper-server.js": {
     restartServer: vi.fn(),
     isReady: vi.fn(() => false),
@@ -97,9 +98,13 @@ for (const [dep, exports] of Object.entries(stubs)) {
 
 const ipcPath = require.resolve(path.resolve(__dirname, "../src/main/ipc.js"));
 delete require.cache[ipcPath];
-const { registerIpcHandlers, expectRecordedAudio, recordingFailed } = require(
-  ipcPath,
-);
+const {
+  registerIpcHandlers,
+  beginDictation,
+  expectRecordedAudio,
+  recordingFailed,
+  cancelDictations,
+} = require(ipcPath);
 registerIpcHandlers({ main: null, overlay: null });
 
 const validEvent = {
@@ -186,8 +191,9 @@ describe("recording watchdog", () => {
   });
 
   it("stays quiet when the audio arrives", async () => {
+    const id = beginDictation();
     expectRecordedAudio();
-    await handlers["audio-recorded"](validEvent, new ArrayBuffer(44));
+    await handlers["audio-recorded"](validEvent, new ArrayBuffer(44), id);
     vi.advanceTimersByTime(5000);
     expect(watchdogWarned()).toBe(false);
   });
@@ -197,5 +203,65 @@ describe("recording watchdog", () => {
     recordingFailed();
     vi.advanceTimersByTime(5000);
     expect(watchdogWarned()).toBe(false);
+  });
+});
+
+describe("Esc cancel", () => {
+  beforeEach(() => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    runPipeline.mockReset();
+    runPipeline.mockImplementation(async () => {});
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const audio = () => new ArrayBuffer(44);
+
+  it("rejects audio without a valid dictation id", async () => {
+    beginDictation();
+    expectRecordedAudio();
+    for (const id of [undefined, null, "1", 1.5, NaN]) {
+      expect(await handlers["audio-recorded"](validEvent, audio(), id)).toBe(
+        false,
+      );
+    }
+    expect(runPipeline).not.toHaveBeenCalled();
+    recordingFailed();
+  });
+
+  it("drops audio from a dictation cancelled while recording", async () => {
+    const id = beginDictation();
+    cancelDictations();
+    expect(await handlers["audio-recorded"](validEvent, audio(), id)).toBe(
+      false,
+    );
+    expect(runPipeline).not.toHaveBeenCalled();
+  });
+
+  it("returns as soon as Esc is pressed mid-transcription", async () => {
+    runPipeline.mockImplementation(() => new Promise(() => {})); // never ends
+    const id = beginDictation();
+    expectRecordedAudio();
+    const result = handlers["audio-recorded"](validEvent, audio(), id);
+    await Promise.resolve();
+    const { isCancelled } = runPipeline.mock.calls[0][1];
+    expect(isCancelled()).toBe(false);
+
+    cancelDictations();
+    expect(await result).toBe(false);
+    expect(isCancelled()).toBe(true);
+  });
+
+  it("does not affect the next dictation", async () => {
+    beginDictation();
+    cancelDictations();
+    const id = beginDictation();
+    expectRecordedAudio();
+    expect(await handlers["audio-recorded"](validEvent, audio(), id)).toBe(
+      true,
+    );
+    expect(runPipeline).toHaveBeenCalledTimes(1);
   });
 });

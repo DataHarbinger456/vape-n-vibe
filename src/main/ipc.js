@@ -6,6 +6,7 @@ const {
   BrowserWindow,
   systemPreferences,
   clipboard,
+  globalShortcut,
 } = require("electron");
 const defaults = require("../config/defaults");
 const store = require("./store");
@@ -26,6 +27,11 @@ const {
   sanitizeCorrections,
   BUILT_IN_COUNT,
 } = require("./corrections");
+const {
+  cancelAccelerators,
+  createDictationTracker,
+  createCancelKey,
+} = require("./dictation-cancel");
 
 /** Largest audio chunk accepted from the renderer (~16s of PCM16). */
 const MAX_STREAM_CHUNK_BYTES = 512 * 1024;
@@ -43,6 +49,30 @@ let audioWatchdog = null;
 /** How long after the hotkey is released the window's audio may take. */
 const AUDIO_WATCHDOG_MS = 5000;
 
+// Dictation ids, so Esc can cancel audio and transcripts still in flight.
+const dictations = createDictationTracker();
+
+// Global Esc shortcut, held only while a dictation can be cancelled.
+let cancelKey = null;
+
+// True from the moment recording starts until the hotkey is released.
+let recordingActive = false;
+
+// Pipelines still transcribing or pasting.
+let pipelinesRunning = 0;
+
+// Bumped whenever a recording ends or is cancelled, so in-flight
+// previews from it discard their result.
+let recordingSessionId = 0;
+
+/** Hold Esc exactly while there is a dictation to cancel. */
+function syncCancelKey() {
+  if (!cancelKey) return;
+  cancelKey.setHeld(
+    recordingActive || audioWatchdog !== null || pipelinesRunning > 0,
+  );
+}
+
 /** Close the live speech session, if one is open. */
 function cancelLiveStream() {
   if (streamSession) {
@@ -51,12 +81,21 @@ function cancelLiveStream() {
   }
 }
 
+/** Call when recording starts. Returns the new dictation's id. */
+function beginDictation() {
+  recordingActive = true;
+  const id = dictations.begin();
+  syncCancelKey();
+  return id;
+}
+
 /**
  * Call when the hotkey is released. If the window sends neither the
  * recording nor an error soon after, log it (otherwise the dictation
  * would vanish without a trace) and close any live session.
  */
 function expectRecordedAudio() {
+  recordingActive = false;
   clearTimeout(audioWatchdog);
   audioWatchdog = setTimeout(() => {
     audioWatchdog = null;
@@ -64,14 +103,34 @@ function expectRecordedAudio() {
       "[ipc] Recording stopped but no audio arrived from the window — it may not have been ready",
     );
     cancelLiveStream();
+    syncCancelKey();
   }, AUDIO_WATCHDOG_MS);
+  syncCancelKey();
 }
 
 /** Call when the window reports a recording error (audio won't come). */
 function recordingFailed() {
+  recordingActive = false;
   clearTimeout(audioWatchdog);
   audioWatchdog = null;
   cancelLiveStream();
+  syncCancelKey();
+}
+
+/**
+ * Call when Esc is pressed. Drops every dictation in flight — the
+ * recording, audio still on its way from the window and any transcription
+ * — so nothing from them is pasted or saved to history.
+ */
+function cancelDictations() {
+  dictations.cancelAll();
+  recordingActive = false;
+  clearTimeout(audioWatchdog);
+  audioWatchdog = null;
+  recordingSessionId++;
+  cancelActivePartial();
+  cancelLiveStream();
+  syncCancelKey();
 }
 
 function validateSender(frame) {
@@ -99,8 +158,19 @@ function sendToOverlay(channel, data) {
   }
 }
 
-function registerIpcHandlers(windows) {
+/**
+ * @param {object} windows
+ * @param {{ onCancel?: () => void }} [options]
+ *   onCancel runs when Esc is pressed during a dictation. Without it, Esc
+ *   is never taken.
+ */
+function registerIpcHandlers(windows, { onCancel } = {}) {
   _windows = windows;
+  cancelKey = onCancel
+    ? createCancelKey(globalShortcut, onCancel, () =>
+        cancelAccelerators(store.get("hotkey")),
+      )
+    : null;
 
   ipcMain.handle("get-config", (event) => {
     if (!validateSender(event.senderFrame)) return null;
@@ -392,7 +462,6 @@ function registerIpcHandlers(windows) {
   // prevents a partial that was in-flight when audio-recorded fired from
   // updating the overlay after the session has already ended.
   let partialInFlight = false;
-  let recordingSessionId = 0;
 
   function sendPartialText(text) {
     sendToOverlay("partial-text", text);
@@ -406,6 +475,8 @@ function registerIpcHandlers(windows) {
   ipcMain.handle("audio-stream-start", (event) => {
     if (!validateSender(event.senderFrame)) return { streaming: false };
     cancelLiveStream();
+    // Esc already cancelled this recording before the window got going.
+    if (dictations.isLatestCancelled()) return { streaming: false };
 
     const lang = store.get("language");
     const { getActiveModel, parseOutput } = require("./transcribe");
@@ -471,8 +542,16 @@ function registerIpcHandlers(windows) {
   });
 
   // Receive recorded audio from renderer
-  ipcMain.handle("audio-recorded", async (event, wavBuffer) => {
+  ipcMain.handle("audio-recorded", async (event, wavBuffer, dictationId) => {
     if (!validateSender(event.senderFrame)) return false;
+    if (!Number.isSafeInteger(dictationId)) {
+      console.warn("[ipc] Recorded audio has no valid dictation id, ignoring");
+      return false;
+    }
+    if (dictations.isCancelled(dictationId)) {
+      console.log("[ipc] Dropped audio from a cancelled dictation");
+      return false;
+    }
 
     // Advance the session ID so any in-flight partial discards its result,
     // and abort it — the whisper server is single-threaded, so an active
@@ -491,16 +570,41 @@ function registerIpcHandlers(windows) {
     // Always run the full pipeline with the complete audio buffer.
     // Partials were display-only previews — the final transcription
     // needs the entire recording to capture every word.
-    await runPipeline(wavBuffer, {
+    // Once Esc cancels it, it goes quiet: no status updates, no paste.
+    const isCancelled = () => dictations.isCancelled(dictationId);
+    const pipeline = runPipeline(wavBuffer, {
       sendStatus: (status) => {
+        if (isCancelled()) return;
         const win = getWin();
         if (win) win.webContents.send("transcription-status", status);
       },
-      sendOverlay: (mode) => sendToOverlay("viz-mode", mode),
+      sendOverlay: (mode) => {
+        if (!isCancelled()) sendToOverlay("viz-mode", mode);
+      },
       streamSession: session,
+      isCancelled,
+    });
+    // If Esc wins the race below, the pipeline finishes in the background.
+    pipeline.catch((err) => {
+      if (isCancelled()) {
+        console.error("[ipc] Cancelled pipeline failed:", err);
+      }
     });
 
-    return true;
+    // Resolve as soon as Esc is pressed, not when the transcription
+    // ends, so the window is free to start the next dictation at once.
+    const cancelled = dictations.whenCancelled(dictationId);
+    pipelinesRunning++;
+    syncCancelKey();
+    try {
+      await Promise.race([pipeline, cancelled.promise]);
+    } finally {
+      cancelled.dispose();
+      pipelinesRunning--;
+      syncCancelKey();
+    }
+
+    return !isCancelled();
   });
 }
 
@@ -509,6 +613,8 @@ module.exports = {
   getWin,
   sendToOverlay,
   validateSender,
+  beginDictation,
   expectRecordedAudio,
   recordingFailed,
+  cancelDictations,
 };

@@ -37,11 +37,17 @@ contextBridge.exposeInMainWorld("vapenvibe", {
     return () => ipcRenderer.removeListener("downloads-error", handler);
   },
   onRecordingToggle: (cb) => {
-    const handler = (_e, on) => cb(on);
+    const handler = (_e, on, dictationId) => cb(on, dictationId);
     ipcRenderer.on("recording-toggle", handler);
     return () => ipcRenderer.removeListener("recording-toggle", handler);
   },
-  sendAudio: (wavBuffer) => ipcRenderer.invoke("audio-recorded", wavBuffer),
+  onRecordingCancel: (cb) => {
+    const handler = () => cb();
+    ipcRenderer.on("recording-cancel", handler);
+    return () => ipcRenderer.removeListener("recording-cancel", handler);
+  },
+  sendAudio: (wavBuffer, dictationId) =>
+    ipcRenderer.invoke("audio-recorded", wavBuffer, dictationId),
   sendPartialAudio: (wavBuffer) =>
     ipcRenderer.invoke("audio-partial", wavBuffer),
   startAudioStream: () => ipcRenderer.invoke("audio-stream-start"),
